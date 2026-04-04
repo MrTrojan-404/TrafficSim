@@ -23,7 +23,8 @@ void UTrafficNetworkSubsystem::BuildGraph()
     // 1. Gather all nodes and wipe any stale editor data
     for (TActorIterator<AIntersectionNode> It(World); It; ++It)
     {
-        It->OutgoingSegments.Empty(); 
+        It->OutgoingSegments.Empty();
+        It->IncomingSegments.Empty();
         GraphNodes.Add(*It);
     }
     
@@ -33,10 +34,16 @@ void UTrafficNetworkSubsystem::BuildGraph()
     {
         if (It->StartNode)
         {
-            // Auto-populate the array!
             It->StartNode->OutgoingSegments.AddUnique(*It);
+            It->EndNode->IncomingSegments.AddUnique(*It); // Hook up for traffic lights!
         }
-        RoadCount++;
+        
+        // The Two-Way Magic: Reverse the connections for the same physical road
+        if (It->bIsTwoWay && It->EndNode)
+        {
+            It->EndNode->OutgoingSegments.AddUnique(*It);
+            It->StartNode->IncomingSegments.AddUnique(*It); 
+        }
     }
     
     UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Built graph with %d intersections and linked %d roads."), GraphNodes.Num(), RoadCount);
@@ -90,7 +97,7 @@ TArray<ARoadSegment*> UTrafficNetworkSubsystem::FindPath(AIntersectionNode* Star
         {
             if (!Segment || !Segment->EndNode) continue;
 
-            AIntersectionNode* NeighborNode = Segment->EndNode;
+            AIntersectionNode* NeighborNode = (Segment->StartNode == CurrentRecord->Node) ? Segment->EndNode : Segment->StartNode;
             
             // Calculate movement cost considering dynamic traffic congestion
             float TentativeGCost = CurrentRecord->GCost + Segment->GetRoutingWeight();

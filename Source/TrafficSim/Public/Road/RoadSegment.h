@@ -35,4 +35,26 @@ public:
 	// Calculates the dynamic cost of traversing this road
 	UFUNCTION(BlueprintCallable, Category = "Traffic Logic")
 	float GetRoutingWeight() const;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
+	TArray<class ATrafficVehicle*> ActiveVehicles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Data")
+	bool bIsTwoWay = true; // Default to two-way now!
+
+	// Split the trackers so cars only care about their own lane
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
+	TArray<class ATrafficVehicle*> VehiclesForward; // Driving StartNode -> EndNode
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
+	TArray<class ATrafficVehicle*> VehiclesBackward; // Driving EndNode -> StartNode
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UStaticMeshComponent* ForwardLightMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UStaticMeshComponent* BackwardLightMesh;
+
+	// The intersection will call this to change the color
+	void SetIntersectionLightColor(class AIntersectionNode* Intersection, FLinearColor Color);
 };

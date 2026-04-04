@@ -32,12 +32,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Traffic AI")
 	TArray<ARoadSegment*> FindPath(AIntersectionNode* StartNode, AIntersectionNode* EndNode);
 
+	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Debug")
+	void DebugDrawPath(AIntersectionNode* StartNode, AIntersectionNode* EndNode);
 private:
 	void BuildGraph();
     
 	UPROPERTY()
 	TArray<AIntersectionNode*> GraphNodes;
-
-	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Debug")
-	void DebugDrawPath(AIntersectionNode* StartNode, AIntersectionNode* EndNode);
 };
