@@ -2,6 +2,8 @@
 
 
 #include "TrafficSim/Public/Road/RoadSegment.h"
+
+#include "Components/SplineMeshComponent.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
 
 
@@ -32,18 +34,57 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 		// Snap the first spline point to the StartNode
 		if (StartNode)
 		{
-			SplineComponent->SetLocationAtSplinePoint(0, StartNode->GetActorLocation(), ESplineCoordinateSpace::World,
-			                                          true);
+			SplineComponent->SetLocationAtSplinePoint(0, StartNode->GetActorLocation(), ESplineCoordinateSpace::World, true);
 		}
 
 		// Snap the last spline point to the EndNode
 		if (EndNode)
 		{
 			int32 LastPointIndex = SplineComponent->GetNumberOfSplinePoints() - 1;
-			SplineComponent->SetLocationAtSplinePoint(LastPointIndex, EndNode->GetActorLocation(),
-			                                          ESplineCoordinateSpace::World, true);
+			SplineComponent->SetLocationAtSplinePoint(LastPointIndex, EndNode->GetActorLocation(), ESplineCoordinateSpace::World, true);
 		}
 
+		// ---> WE DELETED THE MANUAL CLEANUP LOOP! Unreal handles it automatically now. <---
+
+		// 2. GENERATION: Build the modular road
+		if (RoadMeshAsset)
+		{
+			int32 NumPoints = SplineComponent->GetNumberOfSplinePoints();
+			
+			for (int32 i = 0; i < NumPoints - 1; ++i)
+			{
+				USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
+				SplineMesh->CreationMethod = EComponentCreationMethod::UserConstructionScript; 
+				
+				// ---> CRITICAL FIX: Setup Attachment MUST happen before Registering <---
+				SplineMesh->SetupAttachment(SplineComponent);
+
+				SplineMesh->SetStaticMesh(RoadMeshAsset);
+				SplineMesh->SetCollisionProfileName(TEXT("NoCollision")); 
+				SplineMesh->SetMobility(EComponentMobility::Static);
+
+				// Now that it's attached properly, we register it to the world
+				SplineMesh->RegisterComponent();
+
+				// Explicitly zero out any rogue offsets just to be safe
+				SplineMesh->SetRelativeTransform(FTransform::Identity); 
+
+				// Widen the road
+				SplineMesh->SetStartScale(FVector2D(1.0f, 6.0f));
+				SplineMesh->SetEndScale(FVector2D(1.0f, 6.0f));
+
+				// Force the component to respect the default plane's center-pivot bounds
+				SplineMesh->SetBoundaryMin(-50.0f);
+				SplineMesh->SetBoundaryMax(50.0f);
+
+				FVector StartPos, StartTangent, EndPos, EndTangent;
+				SplineComponent->GetLocationAndTangentAtSplinePoint(i, StartPos, StartTangent, ESplineCoordinateSpace::Local);
+				SplineComponent->GetLocationAndTangentAtSplinePoint(i + 1, EndPos, EndTangent, ESplineCoordinateSpace::Local);
+
+				SplineMesh->SetStartAndEnd(StartPos, StartTangent, EndPos, EndTangent);
+			}
+		}
+		
 		float Length = SplineComponent->GetSplineLength();
 		float StopDist = 800.0f; // Matches your vehicle braking distance!
 		float HeightOffset = 300.0f; // How high the light floats above the road
@@ -65,7 +106,6 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 		}
 	}
 }
-
 void ARoadSegment::SetIntersectionLightColor(AIntersectionNode* Intersection, FLinearColor Color)
 {
 	UStaticMeshComponent* TargetMesh = nullptr;
@@ -100,3 +140,4 @@ float ARoadSegment::GetRoutingWeight() const
 
 	return BaseWeight * TrafficPenalty;
 }
+

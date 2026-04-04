@@ -30,9 +30,9 @@ protected:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Spawning")
 	AIntersectionNode* StartNode;
 
-	// Where the car is trying to go
+	// A list of possible destinations for the cars to choose from
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Spawning")
-	AIntersectionNode* DestinationNode;
+	TArray<AIntersectionNode*> DestinationNodes;
 
 private:
 	FTimerHandle SpawnTimerHandle;

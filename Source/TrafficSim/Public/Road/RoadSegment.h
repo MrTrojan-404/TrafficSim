@@ -44,16 +44,20 @@ public:
 
 	// Split the trackers so cars only care about their own lane
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
-	TArray<class ATrafficVehicle*> VehiclesForward; // Driving StartNode -> EndNode
+	TArray<ATrafficVehicle*> VehiclesForward; // Driving StartNode -> EndNode
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
-	TArray<class ATrafficVehicle*> VehiclesBackward; // Driving EndNode -> StartNode
+	TArray<ATrafficVehicle*> VehiclesBackward; // Driving EndNode -> StartNode
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UStaticMeshComponent* ForwardLightMesh;
+	UStaticMeshComponent* ForwardLightMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UStaticMeshComponent* BackwardLightMesh;
+	UStaticMeshComponent* BackwardLightMesh;
+
+	// The 3D model used for the road
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+	UStaticMesh* RoadMeshAsset;
 
 	// The intersection will call this to change the color
 	void SetIntersectionLightColor(class AIntersectionNode* Intersection, FLinearColor Color);

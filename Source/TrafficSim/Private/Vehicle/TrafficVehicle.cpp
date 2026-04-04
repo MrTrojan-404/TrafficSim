@@ -202,7 +202,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         FVector RightVector = CurrentSegment->SplineComponent->GetRightVectorAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         
         // Push the car 200 units to the right depending on its direction
-        float LaneOffset = bTravelingForward ? 200.0f : -200.0f; 
+        float LaneOffset = bTravelingForward ? 150.0f : -150.0f; 
         FVector OffsetLocation = BaseLocation + (RightVector * LaneOffset);
 
         // If driving backward mathematically, we need to flip the car 180 degrees visually

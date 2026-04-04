@@ -2,6 +2,8 @@
 
 
 #include "TrafficSim/Public/Road/IntersectionNode.h"
+
+#include "EngineUtils.h"
 #include "TimerManager.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
@@ -89,3 +91,21 @@ void AIntersectionNode::PlayerForceLightChange()
 	// Restart the automatic timer from 0
 	GetWorld()->GetTimerManager().SetTimer(LightTimerHandle, this, &AIntersectionNode::CycleTrafficLight, 5.0f, true);
 }
+// ---> ADD THIS <---
+#if WITH_EDITOR
+void AIntersectionNode::PostEditMove(bool bFinished)
+{
+	Super::PostEditMove(bFinished);
+
+	// When the intersection moves, find all roads in the world...
+	for (TActorIterator<ARoadSegment> It(GetWorld()); It; ++It)
+	{
+		// ...if the road is connected to us...
+		if (It->StartNode == this || It->EndNode == this)
+		{
+			// ...force it to rerun its OnConstruction script!
+			It->RerunConstructionScripts();
+		}
+	}
+}
+#endif

@@ -13,7 +13,7 @@ class TRAFFICSIM_API AIntersectionNode : public AActor
     
 public:	
 	AIntersectionNode();
-
+	
 	// Visual representation for the editor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class USphereComponent* SphereComponent;
@@ -45,6 +45,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+#if WITH_EDITOR
+	virtual void PostEditMove(bool bFinished) override;
+#endif
+	
 private:
 	int32 GreenLightIndex = 0;
 	void CycleTrafficLight();
