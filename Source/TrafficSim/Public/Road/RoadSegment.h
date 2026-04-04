@@ -81,6 +81,8 @@ public:
 	UFUNCTION()
 	void OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Data")
+	bool bDriveOnLeft = true;
 protected:
 	virtual void BeginPlay() override;
 };

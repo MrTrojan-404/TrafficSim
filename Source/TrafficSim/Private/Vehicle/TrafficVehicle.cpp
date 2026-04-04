@@ -131,28 +131,40 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     // 1. WHICH LANE ARE WE IN? Get the correct array of cars
     TArray<ATrafficVehicle*>& RelevantVehicles = bTravelingForward ? CurrentSegment->VehiclesForward : CurrentSegment->VehiclesBackward;
 
-  // 2. CHECK FOR CARS AHEAD
+    // 2. CHECK FOR CARS (Ahead and Behind!)
+    bIsPullingOver = false;
     for (ATrafficVehicle* OtherCar : RelevantVehicles)
     {
         if (OtherCar == this) continue;
 
-        float Gap = 0.0f;
-        if (bTravelingForward && OtherCar->DistanceAlongSpline > this->DistanceAlongSpline)
-        {
-            Gap = OtherCar->DistanceAlongSpline - this->DistanceAlongSpline;
-        }
-        else if (!bTravelingForward && OtherCar->DistanceAlongSpline < this->DistanceAlongSpline)
-        {
-            Gap = this->DistanceAlongSpline - OtherCar->DistanceAlongSpline;
-        }
+        // ---> FIX 1: ONLY Ambulances get to ignore cars that have pulled over! <---
+        if (bIsEmergencyVehicle && OtherCar->bIsPullingOver) continue;
 
+        // Positive Gap = OtherCar is Ahead. Negative Gap = OtherCar is Behind.
+        float Gap = bTravelingForward ? (OtherCar->DistanceAlongSpline - this->DistanceAlongSpline) : (this->DistanceAlongSpline - OtherCar->DistanceAlongSpline);
+
+        // Check front bumper for normal braking (Normal cars WILL respect pulled-over cars!)
         if (Gap > 0.0f && Gap < DistanceToCarAhead)
         {
             DistanceToCarAhead = Gap;
         }
+
+        // ---> FIX 2: The "Emergency Corridor" Hold <---
+        if (!bIsEmergencyVehicle && OtherCar->bIsEmergencyVehicle)
+        {
+            // If the siren is up to 2500 units behind us, OR up to 800 units ahead of us
+            // (meaning it passed us but got trapped at the same red light), stay on the shoulder!
+            if (Gap > -2500.0f && Gap < 800.0f)
+            {
+                bIsPullingOver = true;
+            }
+        }
     }
 
     if (DistanceToCarAhead < MinFollowingDistance) TargetSpeed = 0.0f; 
+    
+    // If a siren is behind us, slam on the brakes so the offset math can slide us to the curb
+    if (bIsPullingOver) TargetSpeed = 0.0f;
 
     // 3. FIXED ROADBLOCK LOGIC (Only stop if the block is strictly IN FRONT of us)
     if (CurrentSegment->bIsBlocked)
@@ -179,7 +191,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
     }
 
-    // ---> NEW 4. DYNAMIC GPS REROUTING (Works for the whole lane!) <---
+    // --->  4. DYNAMIC GPS REROUTING (Works for the whole lane!) <---
     if (PathIndex + 1 < CurrentPath.Num())
     {
         ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
@@ -219,29 +231,38 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
 
     if (DistanceToIntersection < IntersectionStopDistance)
     {
-        bool bMustStop = false;
+        bool bRedLightStop = false;
+        bool bGridlockStop = false;
 
         // Rule A: The Red Light Check
         if (ApproachingNode && ApproachingNode->CurrentGreenRoad != CurrentSegment)
         {
-            bMustStop = true; 
+            bRedLightStop = true; 
         }
 
         // Rule B: "Don't Block the Box" (Gridlock Check)
-        // Even if the light is green, we cannot enter if the next road is blocked or full!
-        if (!bMustStop && PathIndex + 1 < CurrentPath.Num())
+        // Check if the next road is physically impossible to enter
+        if (PathIndex + 1 < CurrentPath.Num())
         {
             ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
             if (NextSegment)
             {
                 if (NextSegment->bIsBlocked || NextSegment->CurrentVehicleCount >= NextSegment->MaxCapacity)
                 {
-                    bMustStop = true;
+                    bGridlockStop = true;
                 }
             }
         }
 
-        if (bMustStop)
+        // ---> THE FIX: Split the Override! <---
+        // Sirens ignore red lights, but NO ONE ignores physics (Gridlock/Full Roads)
+        if (bIsEmergencyVehicle)
+        {
+            bRedLightStop = false; 
+        }
+
+        // If either condition is true, hit the brakes
+        if (bRedLightStop || bGridlockStop)
         {
             TargetSpeed = 0.0f;
         }
@@ -275,15 +296,26 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     }
 
     // 8. UPDATE 3D TRANSFORM (LANE OFFSET LOGIC)
-    if (CurrentSegment && CurrentSpeed > 0.1f) 
+    if (CurrentSegment) // <-- REMOVED the speed check so stopped cars can still pull over!
     {
         FVector BaseLocation = CurrentSegment->SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         FRotator BaseRotation = CurrentSegment->SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         FVector RightVector = CurrentSegment->SplineComponent->GetRightVectorAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         
-        // Push the car 200 units to the right depending on its direction
-        float LaneOffset = bTravelingForward ? 150.0f : -150.0f; 
-        FVector OffsetLocation = BaseLocation + (RightVector * LaneOffset);
+        // Dynamic Lane Math based on the Road's configuration
+        float BaseOffset = CurrentSegment->bDriveOnLeft ? -150.0f : 150.0f;
+        float TargetLaneOffset = bTravelingForward ? BaseOffset : -BaseOffset; 
+
+        // ---> THE FIX: Multiply by 1.8 to force the car to the outside curb mathematically <---
+        if (bIsPullingOver)
+        {
+            TargetLaneOffset *= 1.8f; 
+        }
+
+        // Smoothly glide left/right instead of teleporting instantly
+        CurrentLaneOffset = FMath::FInterpTo(CurrentLaneOffset, TargetLaneOffset, DeltaTime, 2.0f);
+        
+        FVector OffsetLocation = BaseLocation + (RightVector * CurrentLaneOffset);
 
         // If driving backward mathematically, we need to flip the car 180 degrees visually
         FRotator FinalRotation = bTravelingForward ? BaseRotation : (BaseRotation + FRotator(0, 180, 0));

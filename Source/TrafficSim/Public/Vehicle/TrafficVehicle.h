@@ -50,6 +50,14 @@ public:
 
 	// Tracks the last time this car ran A* so we don't spam the CPU
 	float LastGPSCheckTime = 0.0f;
+
+	// Is this an Ambulance/Police car?
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Emergency")
+	bool bIsEmergencyVehicle = false;
+
+	// State tracker for yielding
+	bool bIsPullingOver = false;
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -60,4 +68,6 @@ private:
 	int32 PathIndex;
 
 	void MoveAlongSpline(float DeltaTime);
+
+	float CurrentLaneOffset = 0.0f;
 };

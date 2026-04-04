@@ -92,23 +92,26 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 		}
 		
 		float Length = SplineComponent->GetSplineLength();
-		float StopDist = 800.0f; // Matches your vehicle braking distance!
-		float HeightOffset = 300.0f; // How high the light floats above the road
+		float StopDist = 800.0f; 
+		float HeightOffset = 300.0f; 
 
-		// Position Forward Light
+		// ---> Dynamic curb offset based on Left/Right Hand Traffic <---
+		float LightOffset = bDriveOnLeft ? -300.0f : 300.0f;
+
+		// Position Forward Light (Outside curb of the forward lane)
 		if (Length > StopDist)
 		{
 			FVector FwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
 			FVector FwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
-			ForwardLightMesh->SetWorldLocation(FwdLoc + (FwdRight * 200.0f) + FVector(0, 0, HeightOffset));
+			ForwardLightMesh->SetWorldLocation(FwdLoc + (FwdRight * LightOffset) + FVector(0, 0, HeightOffset));
 		}
 
-		// Position Backward Light
+		// Position Backward Light (Outside curb of the backward lane)
 		if (Length > StopDist)
 		{
 			FVector BwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
 			FVector BwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
-			BackwardLightMesh->SetWorldLocation(BwdLoc + (BwdRight * -200.0f) + FVector(0, 0, HeightOffset));
+			BackwardLightMesh->SetWorldLocation(BwdLoc + (BwdRight * -LightOffset) + FVector(0, 0, HeightOffset));
 		}
 	}
 }
