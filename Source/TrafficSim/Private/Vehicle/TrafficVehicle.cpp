@@ -131,7 +131,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     // 1. WHICH LANE ARE WE IN? Get the correct array of cars
     TArray<ATrafficVehicle*>& RelevantVehicles = bTravelingForward ? CurrentSegment->VehiclesForward : CurrentSegment->VehiclesBackward;
 
-    // 2. CHECK FOR CARS AHEAD
+  // 2. CHECK FOR CARS AHEAD
     for (ATrafficVehicle* OtherCar : RelevantVehicles)
     {
         if (OtherCar == this) continue;
@@ -154,9 +154,34 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
 
     if (DistanceToCarAhead < MinFollowingDistance) TargetSpeed = 0.0f; 
 
-    // 3. TRAFFIC LIGHT CHECK
+    // 3. FIXED ROADBLOCK LOGIC (Only stop if the block is strictly IN FRONT of us)
+    if (CurrentSegment->bIsBlocked)
+    {
+        float BlockDist = CurrentSegment->BlockedDistance;
+        bool bIsBlockAhead = false;
+        float DistToBlock = 0.0f;
+
+        if (bTravelingForward && DistanceAlongSpline < BlockDist)
+        {
+            bIsBlockAhead = true;
+            DistToBlock = BlockDist - DistanceAlongSpline;
+        }
+        else if (!bTravelingForward && DistanceAlongSpline > BlockDist)
+        {
+            bIsBlockAhead = true;
+            DistToBlock = DistanceAlongSpline - BlockDist;
+        }
+
+        // Only stop if the barrier is ahead AND we are close to it
+        if (bIsBlockAhead && DistToBlock < (MinFollowingDistance + 150.0f)) 
+        {
+            TargetSpeed = 0.0f;
+        }
+    }
+
+    // 4. TRAFFIC LIGHT & DYNAMIC REROUTING
     float DistanceToIntersection = bTravelingForward ? (SegmentLength - DistanceAlongSpline) : DistanceAlongSpline;
-    float IntersectionStopDistance = 800.0f; // Increased so they see the light earlier
+    float IntersectionStopDistance = 800.0f; 
     AIntersectionNode* ApproachingNode = bTravelingForward ? CurrentSegment->EndNode : CurrentSegment->StartNode;
 
     if (DistanceToIntersection < IntersectionStopDistance)
@@ -164,14 +189,41 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         if (ApproachingNode && ApproachingNode->CurrentGreenRoad != CurrentSegment)
         {
             TargetSpeed = 0.0f; // Red light!
+
+            // ---> NEW DYNAMIC REROUTING <---
+            // While waiting at the light, peek at the NEXT road in our path array
+            if (PathIndex + 1 < CurrentPath.Num())
+            {
+                ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
+                
+                // If the user just dropped a roadblock on our next turn...
+                if (NextSegment && NextSegment->bIsBlocked)
+                {
+                    UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
+                    if (Subsystem && DebugEndNode)
+                    {
+                        // Ask A* for a new route starting from the intersection we are currently sitting at
+                        TArray<ARoadSegment*> DetourPath = Subsystem->FindPath(ApproachingNode, DebugEndNode);
+                        
+                        if (DetourPath.Num() > 0)
+                        {
+                            // Strip out all old upcoming roads and append the new detour!
+                            CurrentPath.RemoveAt(PathIndex + 1, CurrentPath.Num() - (PathIndex + 1));
+                            CurrentPath.Append(DetourPath);
+                            
+                            UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Vehicle rerouted to avoid roadblock!"));
+                        }
+                    }
+                }
+            }
         }
     }
-    
+
     // Smoothly adjust speed, but brake HARD if TargetSpeed is 0
     float InterpSpeed = (TargetSpeed == 0.0f) ? 10.0f : 3.0f;
     CurrentSpeed = FMath::FInterpTo(CurrentSpeed, TargetSpeed, DeltaTime, InterpSpeed);
 
-    // 4. MOVEMENT
+    // 4. MOVEMENT (which might be labeled // 5 in your current file)
     if (bTravelingForward) DistanceAlongSpline += (CurrentSpeed * DeltaTime);
     else DistanceAlongSpline -= (CurrentSpeed * DeltaTime);
 

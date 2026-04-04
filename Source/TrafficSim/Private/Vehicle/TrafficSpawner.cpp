@@ -66,6 +66,7 @@ void ATrafficSpawner::SpawnVehicle()
 
 		if (NewVehicle)
 		{
+			NewVehicle->DebugEndNode = TargetDestination;
 			NewVehicle->SetRoute(Path);
 		}
 	}

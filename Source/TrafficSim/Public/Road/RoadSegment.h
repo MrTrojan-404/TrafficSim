@@ -61,4 +61,26 @@ public:
 
 	// The intersection will call this to change the color
 	void SetIntersectionLightColor(class AIntersectionNode* Intersection, FLinearColor Color);
+
+	// --- ROADBLOCK SYSTEM ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Data")
+	bool bIsBlocked = false;
+
+	// The visual barrier (e.g., a cone, barricade, or just a red cube)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UStaticMeshComponent* RoadblockVisual;
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Logic")
+	void ToggleRoadblock();
+
+	// Add this variable to remember the roadblock's exact position
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
+	float BlockedDistance = 0.0f;
+
+	// Update your click function signature (we are binding to the Actor now)
+	UFUNCTION()
+	void OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed);
+
+protected:
+	virtual void BeginPlay() override;
 };

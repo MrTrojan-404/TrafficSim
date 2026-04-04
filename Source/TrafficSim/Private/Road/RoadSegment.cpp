@@ -3,6 +3,7 @@
 
 #include "TrafficSim/Public/Road/RoadSegment.h"
 
+#include "Components/BoxComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
 
@@ -24,6 +25,11 @@ ARoadSegment::ARoadSegment()
 	BackwardLightMesh->SetupAttachment(RootComponent);
 	BackwardLightMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	BackwardLightMesh->SetWorldScale3D(FVector(0.5f));
+	
+	// Create the visual barrier
+	RoadblockVisual = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadblockVisual"));
+	RoadblockVisual->SetCollisionProfileName(TEXT("NoCollision"));
+	RoadblockVisual->SetVisibility(false); // Hidden by default
 }
 void ARoadSegment::OnConstruction(const FTransform& Transform)
 {
@@ -60,7 +66,7 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 				SplineMesh->SetupAttachment(SplineComponent);
 
 				SplineMesh->SetStaticMesh(RoadMeshAsset);
-				SplineMesh->SetCollisionProfileName(TEXT("NoCollision")); 
+				SplineMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 				SplineMesh->SetMobility(EComponentMobility::Static);
 
 				// Now that it's attached properly, we register it to the world
@@ -106,6 +112,56 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 		}
 	}
 }
+
+void ARoadSegment::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Bind to the entire Actor
+	OnClicked.AddDynamic(this, &ARoadSegment::OnRoadClicked);
+}
+
+void ARoadSegment::OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed)
+{
+	ToggleRoadblock();
+}
+
+void ARoadSegment::ToggleRoadblock()
+{
+	bIsBlocked = !bIsBlocked;
+
+	if (bIsBlocked)
+	{
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		FHitResult Hit;
+		
+		// 1. Shoot a laser from the mouse to the road
+		if (PC && PC->GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+		{
+			// 2. Find the exact distance along the spline where the laser hit
+			float InputKey = SplineComponent->FindInputKeyClosestToWorldLocation(Hit.ImpactPoint);
+			BlockedDistance = SplineComponent->GetDistanceAlongSplineAtSplineInputKey(InputKey);
+
+			// 3. Move the visual barrier to that exact spot
+			FVector BlockLocation = SplineComponent->GetLocationAtDistanceAlongSpline(BlockedDistance, ESplineCoordinateSpace::World);
+			FRotator BlockRotation = SplineComponent->GetRotationAtDistanceAlongSpline(BlockedDistance, ESplineCoordinateSpace::World);
+
+			if (RoadblockVisual)
+			{
+				RoadblockVisual->SetWorldLocation(BlockLocation);
+				RoadblockVisual->SetWorldRotation(BlockRotation);
+				RoadblockVisual->SetVisibility(true);
+			}
+		}
+	}
+	else
+	{
+		if (RoadblockVisual) RoadblockVisual->SetVisibility(false);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Road %s block state changed to %d"), *GetName(), bIsBlocked);
+}
+
 void ARoadSegment::SetIntersectionLightColor(AIntersectionNode* Intersection, FLinearColor Color)
 {
 	UStaticMeshComponent* TargetMesh = nullptr;
@@ -123,6 +179,12 @@ void ARoadSegment::SetIntersectionLightColor(AIntersectionNode* Intersection, FL
 
 float ARoadSegment::GetRoutingWeight() const
 {
+	// If the road is blocked, return a massive penalty so A* ignores it
+	if (bIsBlocked)
+	{
+		return 999999.0f; 
+	}
+	
 	// Base weight is the physical length of the road
 	float BaseWeight = SplineComponent->GetSplineLength();
 
