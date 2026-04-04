@@ -83,6 +83,25 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Data")
 	bool bDriveOnLeft = true;
+
+	// --- HEATMAP VISUALS ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals | Heatmap")
+	FLinearColor EmptyRoadColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f); // Pure Black = No Glow
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals | Heatmap")
+	FLinearColor CongestedColor = FLinearColor(5.0f, 0.0f, 0.0f, 1.0f); // High-Intensity Red
+	
+	// Stores the dynamic materials so we don't recreate them every frame
+	UPROPERTY()
+	TArray<class UMaterialInstanceDynamic*> HeatmapMaterials;
+	
 protected:
 	virtual void BeginPlay() override;
+
+private:
+	FTimerHandle HeatmapTimerHandle;
+
+	UFUNCTION()
+	void UpdateHeatmap();
+	
 };

@@ -96,7 +96,7 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 		float HeightOffset = 300.0f; 
 
 		// ---> Dynamic curb offset based on Left/Right Hand Traffic <---
-		float LightOffset = bDriveOnLeft ? -300.0f : 300.0f;
+		float LightOffset = bDriveOnLeft ? -150.0f : 150.0f;
 
 		// Position Forward Light (Outside curb of the forward lane)
 		if (Length > StopDist)
@@ -122,6 +122,56 @@ void ARoadSegment::BeginPlay()
 
 	// Bind to the entire Actor
 	OnClicked.AddDynamic(this, &ARoadSegment::OnRoadClicked);
+
+	// ---> NEW HEATMAP SETUP <---
+	// 1. Find all the spline meshes we generated in the Construction Script
+	TArray<USplineMeshComponent*> SplineMeshes;
+	GetComponents<USplineMeshComponent>(SplineMeshes);
+
+	// 2. Convert their materials to Dynamic Instances and save them
+	for (USplineMeshComponent* Mesh : SplineMeshes)
+	{
+		if (Mesh)
+		{
+			UMaterialInstanceDynamic* MID = Mesh->CreateAndSetMaterialInstanceDynamic(0);
+			if (MID)
+			{
+				HeatmapMaterials.Add(MID);
+			}
+		}
+	}
+
+	// 3. Start the heatmap update loop (Running twice a second is highly optimized)
+	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.5f, true);
+}
+
+void ARoadSegment::UpdateHeatmap()
+{
+	float CongestionRatio = 0.0f;
+
+	if (bIsBlocked)
+	{
+		CongestionRatio = 1.0f;
+	}
+	else if (MaxCapacity > 0)
+	{
+		CongestionRatio = FMath::Clamp((float)CurrentVehicleCount / (float)MaxCapacity, 0.0f, 1.0f);
+	}
+
+	// ---> Apply an exponential curve! <---
+	// 0.1 cubed is 0.001 (invisible). 0.5 cubed is 0.125 (subtle). 0.9 cubed is 0.72 (bright!).
+	float VisualIntensityCurve = FMath::Pow(CongestionRatio, 3.0f);
+
+	// Use our new curved ratio for the color blend
+	FLinearColor CurrentColor = FMath::Lerp(EmptyRoadColor, CongestedColor, VisualIntensityCurve);
+
+	for (UMaterialInstanceDynamic* MID : HeatmapMaterials)
+	{
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("RoadColor"), CurrentColor);
+		}
+	}
 }
 
 void ARoadSegment::OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed)
