@@ -88,3 +88,28 @@ void ATrafficSpawner::SpawnVehicle()
 		UE_LOG(LogTemp, Warning, TEXT("TrafficSpawner: No path found from %s to %s"), *StartNode->GetName(), *TargetDestination->GetName());
 	}
 }
+
+void ATrafficSpawner::TriggerRushHour(int32 CarCount)
+{
+	RushHourCarsRemaining += CarCount;
+
+	// If the rapid timer isn't already running, start it (0.2 seconds per car!)
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RushHourTimerHandle))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RushHourTimerHandle, this, &ATrafficSpawner::ProcessRushHourSpawn, 0.2f, true);
+	}
+}
+
+void ATrafficSpawner::ProcessRushHourSpawn()
+{
+	if (RushHourCarsRemaining > 0)
+	{
+		SpawnVehicle(); // Reuse your exact same robust spawn logic!
+		RushHourCarsRemaining--;
+	}
+	else
+	{
+		// Wave complete, shut down the rapid timer
+		GetWorld()->GetTimerManager().ClearTimer(RushHourTimerHandle);
+	}
+}

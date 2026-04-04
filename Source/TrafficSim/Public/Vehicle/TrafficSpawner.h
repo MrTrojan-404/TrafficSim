@@ -15,6 +15,9 @@ class TRAFFICSIM_API ATrafficSpawner : public AActor
 public:	
 	ATrafficSpawner();
 
+	// Trigger a massive wave of cars
+	UFUNCTION(BlueprintCallable, Category = "Spawning")
+	void TriggerRushHour(int32 CarCount = 10);
 protected:
 	virtual void BeginPlay() override;
 
@@ -39,4 +42,10 @@ private:
 
 	UFUNCTION()
 	void SpawnVehicle();
+
+	int32 RushHourCarsRemaining = 0;
+	FTimerHandle RushHourTimerHandle;
+
+	UFUNCTION()
+	void ProcessRushHourSpawn();
 };

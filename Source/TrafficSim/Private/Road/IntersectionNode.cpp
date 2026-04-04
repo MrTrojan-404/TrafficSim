@@ -7,7 +7,9 @@
 #include "TimerManager.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
+#include "Vehicle/TrafficSpawner.h"
 
 AIntersectionNode::AIntersectionNode()
 {
@@ -48,8 +50,32 @@ void AIntersectionNode::BeginPlay()
 // Route the click directly into your existing logic
 void AIntersectionNode::OnIntersectionClicked(UPrimitiveComponent* TouchedComponent, FKey ButtonPressed)
 {
-	UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Intersection clicked! Forcing light change."));
-	PlayerForceLightChange();
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	
+	// Check if the player is holding Left Shift or Right Shift
+	if (PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift)))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Rush Hour Triggered!"));
+		
+		// Find every spawner in the city
+		TArray<AActor*> Spawners;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficSpawner::StaticClass(), Spawners);
+		
+		for (AActor* Actor : Spawners)
+		{
+			ATrafficSpawner* Spawner = Cast<ATrafficSpawner>(Actor);
+			if (Spawner)
+			{
+				// Tell each spawner to rapidly burst 10 cars!
+				Spawner->TriggerRushHour(10); 
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Intersection clicked! Forcing light change."));
+		PlayerForceLightChange();
+	}
 }
 
 void AIntersectionNode::CycleTrafficLight()
