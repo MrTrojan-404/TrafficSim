@@ -16,9 +16,7 @@ class TRAFFICSIM_API ATrafficPlayerController : public APlayerController
 
 public:
 	ATrafficPlayerController();
-
-	virtual void BeginPlay() override;
-
+	
 	// The blueprint version of our UI
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<class UUserWidget> HUDWidgetClass;
@@ -26,4 +24,13 @@ public:
 	// A pointer to the actual widget once it is created
 	UPROPERTY()
 	class UUserWidget* HUDWidgetInstance;
+
+protected:
+	virtual void BeginPlay() override;
+
+	virtual void SetupInputComponent() override;
+	
+private:
+	void IncreaseCameraSpeed();
+	void DecreaseCameraSpeed();
 };
