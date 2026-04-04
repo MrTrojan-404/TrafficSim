@@ -179,43 +179,71 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
     }
 
-    // 4. TRAFFIC LIGHT & DYNAMIC REROUTING
+    // ---> NEW 4. DYNAMIC GPS REROUTING (Works for the whole lane!) <---
+    if (PathIndex + 1 < CurrentPath.Num())
+    {
+        ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
+        
+        // If the user drops a roadblock on our upcoming turn...
+        if (NextSegment && NextSegment->bIsBlocked)
+        {
+            // Only check for a detour every 2 seconds to prevent massive CPU lag
+            float CurrentTime = GetWorld()->GetTimeSeconds();
+            if (CurrentTime - LastGPSCheckTime > 2.0f)
+            {
+                LastGPSCheckTime = CurrentTime;
+
+                AIntersectionNode* UpcomingIntersection = bTravelingForward ? CurrentSegment->EndNode : CurrentSegment->StartNode;
+                UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
+                
+                if (Subsystem && DebugEndNode && UpcomingIntersection)
+                {
+                    // Ask A* for a new route
+                    TArray<ARoadSegment*> DetourPath = Subsystem->FindPath(UpcomingIntersection, DebugEndNode);
+                    
+                    // Only apply the detour if we found a path AND the path doesn't use the blocked road
+                    if (DetourPath.Num() > 0 && DetourPath[0] != NextSegment)
+                    {
+                        CurrentPath.RemoveAt(PathIndex + 1, CurrentPath.Num() - (PathIndex + 1));
+                        CurrentPath.Append(DetourPath);
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. TRAFFIC LIGHT & GRIDLOCK CHECK
     float DistanceToIntersection = bTravelingForward ? (SegmentLength - DistanceAlongSpline) : DistanceAlongSpline;
     float IntersectionStopDistance = 800.0f; 
     AIntersectionNode* ApproachingNode = bTravelingForward ? CurrentSegment->EndNode : CurrentSegment->StartNode;
 
     if (DistanceToIntersection < IntersectionStopDistance)
     {
+        bool bMustStop = false;
+
+        // Rule A: The Red Light Check
         if (ApproachingNode && ApproachingNode->CurrentGreenRoad != CurrentSegment)
         {
-            TargetSpeed = 0.0f; // Red light!
+            bMustStop = true; 
+        }
 
-            // ---> NEW DYNAMIC REROUTING <---
-            // While waiting at the light, peek at the NEXT road in our path array
-            if (PathIndex + 1 < CurrentPath.Num())
+        // Rule B: "Don't Block the Box" (Gridlock Check)
+        // Even if the light is green, we cannot enter if the next road is blocked or full!
+        if (!bMustStop && PathIndex + 1 < CurrentPath.Num())
+        {
+            ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
+            if (NextSegment)
             {
-                ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
-                
-                // If the user just dropped a roadblock on our next turn...
-                if (NextSegment && NextSegment->bIsBlocked)
+                if (NextSegment->bIsBlocked || NextSegment->CurrentVehicleCount >= NextSegment->MaxCapacity)
                 {
-                    UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
-                    if (Subsystem && DebugEndNode)
-                    {
-                        // Ask A* for a new route starting from the intersection we are currently sitting at
-                        TArray<ARoadSegment*> DetourPath = Subsystem->FindPath(ApproachingNode, DebugEndNode);
-                        
-                        if (DetourPath.Num() > 0)
-                        {
-                            // Strip out all old upcoming roads and append the new detour!
-                            CurrentPath.RemoveAt(PathIndex + 1, CurrentPath.Num() - (PathIndex + 1));
-                            CurrentPath.Append(DetourPath);
-                            
-                            UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Vehicle rerouted to avoid roadblock!"));
-                        }
-                    }
+                    bMustStop = true;
                 }
             }
+        }
+
+        if (bMustStop)
+        {
+            TargetSpeed = 0.0f;
         }
     }
 
@@ -223,11 +251,11 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     float InterpSpeed = (TargetSpeed == 0.0f) ? 10.0f : 3.0f;
     CurrentSpeed = FMath::FInterpTo(CurrentSpeed, TargetSpeed, DeltaTime, InterpSpeed);
 
-    // 4. MOVEMENT (which might be labeled // 5 in your current file)
+    // 6. MOVEMENT (which might be labeled // 5 in your current file)
     if (bTravelingForward) DistanceAlongSpline += (CurrentSpeed * DeltaTime);
     else DistanceAlongSpline -= (CurrentSpeed * DeltaTime);
 
-    // 5. ROAD TRANSITIONS
+    // 7. ROAD TRANSITIONS
     bool bReachedEnd = bTravelingForward ? (DistanceAlongSpline >= SegmentLength) : (DistanceAlongSpline <= 0.0f);
     if (bReachedEnd)
     {
@@ -246,7 +274,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
     }
 
-    // 6. UPDATE 3D TRANSFORM (LANE OFFSET LOGIC)
+    // 8. UPDATE 3D TRANSFORM (LANE OFFSET LOGIC)
     if (CurrentSegment && CurrentSpeed > 0.1f) 
     {
         FVector BaseLocation = CurrentSegment->SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);

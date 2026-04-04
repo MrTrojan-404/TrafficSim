@@ -47,6 +47,9 @@ public:
 	bool bTravelingForward;
 	void RegisterToRoad();
 	void UnregisterFromRoad();
+
+	// Tracks the last time this car ran A* so we don't spam the CPU
+	float LastGPSCheckTime = 0.0f;
 protected:
 	virtual void BeginPlay() override;
 
