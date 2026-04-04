@@ -33,4 +33,5 @@ protected:
 private:
 	void IncreaseCameraSpeed();
 	void DecreaseCameraSpeed();
+	void ToggleMouseCursor();
 };

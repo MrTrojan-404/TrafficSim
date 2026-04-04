@@ -39,6 +39,7 @@ void ATrafficPlayerController::SetupInputComponent()
 	{
 		InputComponent->BindKey(EKeys::MouseScrollUp, IE_Pressed, this, &ATrafficPlayerController::IncreaseCameraSpeed);
 		InputComponent->BindKey(EKeys::MouseScrollDown, IE_Pressed, this, &ATrafficPlayerController::DecreaseCameraSpeed);
+		InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ATrafficPlayerController::ToggleMouseCursor);
 	}
 }
 
@@ -68,5 +69,20 @@ void ATrafficPlayerController::DecreaseCameraSpeed()
 			Movement->MaxSpeed = FMath::Clamp(Movement->MaxSpeed - 1000.0f, 500.0f, 15000.0f);
 			Movement->Acceleration = Movement->MaxSpeed;
 		}
+	}
+}
+void ATrafficPlayerController::ToggleMouseCursor()
+{
+	bShowMouseCursor = !bShowMouseCursor;
+	bEnableClickEvents = bShowMouseCursor;
+	bEnableMouseOverEvents = bShowMouseCursor;
+
+	if (bShowMouseCursor)
+	{
+		SetInputMode(FInputModeGameAndUI());
+	}
+	else
+	{
+		SetInputMode(FInputModeGameOnly());
 	}
 }
