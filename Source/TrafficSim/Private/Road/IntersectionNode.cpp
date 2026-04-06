@@ -5,6 +5,7 @@
 
 #include "EngineUtils.h"
 #include "TimerManager.h"
+#include "Component/TrafficSpawnerComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -30,6 +31,8 @@ AIntersectionNode::AIntersectionNode()
 	TrafficLightVisual->SetupAttachment(RootComponent);
 	TrafficLightVisual->SetLightColor(FLinearColor::Green);
 	TrafficLightVisual->SetIntensity(5000.0f);
+
+	SpawnerComponent = CreateDefaultSubobject<UTrafficSpawnerComponent>(TEXT("SpawnerComponent"));
 }
 
 void AIntersectionNode::BeginPlay()
@@ -48,29 +51,42 @@ void AIntersectionNode::BeginPlay()
 void AIntersectionNode::OnIntersectionClicked(AActor* TouchedActor, FKey ButtonPressed)
 {
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	
-	// Check if the player is holding Left Shift or Right Shift
+    
 	if (PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift)))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Rush Hour Triggered!"));
-		
-		// Find every spawner in the city
+		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Rush Hour Triggered on this Island!"));
+       
+		UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
+		if (!Subsystem) return;
+
+		// 1. Get ONLY the intersections connected to the one we clicked
+		TArray<AIntersectionNode*> ConnectedIsland = Subsystem->GetConnectedNetwork(this);
+
+		// 2. Trigger dynamic Intersection Spawners
+		for (AIntersectionNode* Node : ConnectedIsland)
+		{
+			if (IsValid(Node) && Node->SpawnerComponent) 
+			{
+				Node->SpawnerComponent->TriggerRushHour(10);
+			}
+		}
+
+		// 3. Trigger hardcoded ATrafficSpawners (if you are still using them)
 		TArray<AActor*> Spawners;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficSpawner::StaticClass(), Spawners);
-		
+       
 		for (AActor* Actor : Spawners)
 		{
 			ATrafficSpawner* Spawner = Cast<ATrafficSpawner>(Actor);
-			if (Spawner)
+			// Only trigger if the spawner is physically attached to this specific island
+			if (Spawner && ConnectedIsland.Contains(Spawner->StartNode)) 
 			{
-				// Tell each spawner to rapidly burst 10 cars!
 				Spawner->TriggerRushHour(10); 
 			}
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Intersection clicked! Forcing light change."));
 		PlayerForceLightChange();
 	}
 }
@@ -140,99 +156,6 @@ void AIntersectionNode::PlayerForceLightChange()
 	GetWorld()->GetTimerManager().SetTimer(LightTimerHandle, this, &AIntersectionNode::CycleTrafficLight, 5.0f, true);
 }
 
-void AIntersectionNode::SetAsRandomSpawner()
-{
-	bIsActiveSpawner = true;
-	bIsRandomDest = true;
-	
-	// Start the timer loop!
-	GetWorld()->GetTimerManager().SetTimer(SpawnerTimerHandle, this, &AIntersectionNode::SpawnVehicleRoutine, SpawnInterval, true);
-	UE_LOG(LogTemp, Warning, TEXT("Node %s is now a RANDOM Spawner!"), *GetName());
-}
-
-void AIntersectionNode::SetAsSpecificSpawner(AIntersectionNode* DestinationNode)
-{
-	if (!DestinationNode) return;
-
-	bIsActiveSpawner = true;
-	bIsRandomDest = false;
-	SpecificDestNode = DestinationNode;
-
-	// Start the timer loop!
-	GetWorld()->GetTimerManager().SetTimer(SpawnerTimerHandle, this, &AIntersectionNode::SpawnVehicleRoutine, SpawnInterval, true);
-	UE_LOG(LogTemp, Warning, TEXT("Node %s is now a SPECIFIC Spawner aimed at %s!"), *GetName(), *DestinationNode->GetName());
-}
-
-void AIntersectionNode::SpawnVehicleRoutine()
-{
-	if (VehicleClassesToSpawn.Num() == 0 || !bIsActiveSpawner) return;
-	
-	UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
-	if (!Subsystem) return;
-
-	AIntersectionNode* ChosenDestination = nullptr;
-	TArray<ARoadSegment*> FinalPath;
-
-	// 1. DETERMINE DESTINATION FIRST
-	if (bIsRandomDest)
-	{
-		TArray<AActor*> AllNodes;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), AllNodes);
-		
-		if (AllNodes.Num() > 1)
-		{
-			// Try to find a reachable destination (Max 10 attempts so we don't freeze the game)
-			for (int i = 0; i < 10; i++)
-			{
-				int32 RandomIndex = FMath::RandRange(0, AllNodes.Num() - 1);
-				AIntersectionNode* PotentialDest = Cast<AIntersectionNode>(AllNodes[RandomIndex]);
-				
-				if (PotentialDest && PotentialDest != this)
-				{
-					// Check if a path actually exists!
-					TArray<ARoadSegment*> TestPath = Subsystem->FindPath(this, PotentialDest);
-					if (TestPath.Num() > 0)
-					{
-						ChosenDestination = PotentialDest;
-						FinalPath = TestPath;
-						break; // Found a valid path! Break the loop.
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		ChosenDestination = SpecificDestNode;
-		FinalPath = Subsystem->FindPath(this, ChosenDestination);
-	}
-
-	// If we couldn't find a valid destination or path, abort this specific spawn tick!
-	if (!ChosenDestination || FinalPath.Num() == 0) return;
-
-	// 2. NOW WE ACTUALLY SPAWN THE CAR
-	FVector SpawnLocation = GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
-	FRotator SpawnRotation = GetActorRotation();
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
-
-	// ---> SELECT A RANDOM VEHICLE FROM THE ARRAY <---
-	int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
-	TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
-
-	// Safety check in case you have an empty slot in the array in the editor
-	if (!SelectedVehicleClass) return; 
-
-	// Pass the SelectedVehicleClass instead of the old single variable
-	ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
-
-	if (NewVehicle)
-	{
-		NewVehicle->DebugEndNode = ChosenDestination;
-		NewVehicle->SetRoute(FinalPath);
-	}
-}
 void AIntersectionNode::SetLightState(ELightOverrideState NewState)
 {
 	LightState = NewState;

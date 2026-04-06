@@ -18,6 +18,11 @@ public:
 	// Trigger a massive wave of cars
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
 	void TriggerRushHour(int32 CarCount = 10);
+
+	// Where the car starts
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Spawning")
+	AIntersectionNode* StartNode;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -28,11 +33,7 @@ protected:
 	// How often to spawn a car (in seconds)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
 	float SpawnInterval = 3.0f;
-
-	// Where the car starts
-	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Spawning")
-	AIntersectionNode* StartNode;
-
+	
 	// A list of possible destinations for the cars to choose from
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Spawning")
 	TArray<AIntersectionNode*> DestinationNodes;

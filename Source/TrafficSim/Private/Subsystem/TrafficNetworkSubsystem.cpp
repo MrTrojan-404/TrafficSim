@@ -49,6 +49,42 @@ void UTrafficNetworkSubsystem::BuildGraph()
     UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Built graph with %d intersections and linked %d roads."), GraphNodes.Num(), RoadCount);
 }
 
+TArray<AIntersectionNode*> UTrafficNetworkSubsystem::GetConnectedNetwork(AIntersectionNode* StartNode)
+{
+    TArray<AIntersectionNode*> Visited;
+    if (!StartNode) return Visited;
+
+    TArray<AIntersectionNode*> Queue;
+    Queue.Add(StartNode);
+    Visited.Add(StartNode);
+
+    while(Queue.Num() > 0)
+    {
+        AIntersectionNode* Current = Queue[0];
+        Queue.RemoveAt(0);
+
+        // Check outgoing roads
+        for (ARoadSegment* Road : Current->OutgoingSegments)
+        {
+            if (IsValid(Road) && IsValid(Road->EndNode) && !Visited.Contains(Road->EndNode))
+            {
+                Visited.Add(Road->EndNode);
+                Queue.Add(Road->EndNode);
+            }
+        }
+        // Check incoming roads
+        for (ARoadSegment* Road : Current->IncomingSegments)
+        {
+            if (IsValid(Road) && IsValid(Road->StartNode) && !Visited.Contains(Road->StartNode))
+            {
+                Visited.Add(Road->StartNode);
+                Queue.Add(Road->StartNode);
+            }
+        }
+    }
+    return Visited;
+}
+
 TArray<ARoadSegment*> UTrafficNetworkSubsystem::FindPath(AIntersectionNode* StartNode, AIntersectionNode* EndNode)
 {
     TArray<ARoadSegment*> PathSegments;

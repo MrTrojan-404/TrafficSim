@@ -5,6 +5,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
+#include "Component/TrafficSpawnerComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Kismet/GameplayStatics.h"
 #include "Road/IntersectionNode.h"
@@ -153,7 +154,7 @@ void ATrafficPlayerController::OnPrimaryClick()
 	{
 		HandleBuildModeClick();
 	}
-	else if (CurrentGameMode == ETrafficGameMode::Delete) // <--- NEW ROUTING
+	else if (CurrentGameMode == ETrafficGameMode::Delete) 
 	{
 		HandleDeleteModeClick();
 	}
@@ -170,10 +171,14 @@ void ATrafficPlayerController::OnPrimaryClick()
 			{
 				if (PendingSpawnerNode != ClickedNode)
 				{
-					PendingSpawnerNode->SetAsSpecificSpawner(ClickedNode);
+					if (PendingSpawnerNode->SpawnerComponent)
+					{
+						PendingSpawnerNode->SpawnerComponent->SetAsSpecificSpawner(ClickedNode);
+					}
 					PendingSpawnerNode->SetHighlight(0);
 					PendingSpawnerNode = nullptr;
 				}
+				return;
 			}
 		}
 	}
@@ -337,10 +342,17 @@ void ATrafficPlayerController::ClearCity()
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
 	for (AActor* A : Roads) A->Destroy();
 
-	// 4. Destroy Intersections
+	// 4. Destroy Intersections Safely!
 	TArray<AActor*> Nodes;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), Nodes);
-	for (AActor* A : Nodes) A->Destroy();
+	for (AActor* A : Nodes)
+	{
+		AIntersectionNode* Node = Cast<AIntersectionNode>(A);
+		if (Node)
+		{
+			Node->DestroyIntersectionSafe(); // Use the safe teardown!
+		}
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Cleared!"));
 }

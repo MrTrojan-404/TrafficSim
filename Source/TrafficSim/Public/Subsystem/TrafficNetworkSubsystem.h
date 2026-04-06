@@ -34,6 +34,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Debug")
 	void DebugDrawPath(AIntersectionNode* StartNode, AIntersectionNode* EndNode);
+
+	// Returns every intersection physically connected to the StartNode
+	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Graph")
+	TArray<AIntersectionNode*> GetConnectedNetwork(AIntersectionNode* StartNode);
+	
 private:
 	void BuildGraph();
     

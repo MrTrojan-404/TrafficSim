@@ -2,6 +2,8 @@
 
 
 #include "UI/SpawnerOverlayWidget.h"
+
+#include "Component/TrafficSpawnerComponent.h"
 #include "Components/Button.h"
 #include "Controller/TrafficPlayerController.h"
 #include "Road/IntersectionNode.h"
@@ -26,9 +28,9 @@ void USpawnerOverlayWidget::CloseUI()
 
 void USpawnerOverlayWidget::OnRandomClicked()
 {
-	if (TargetNode)
+	if (TargetNode && TargetNode->SpawnerComponent)
 	{
-		TargetNode->SetAsRandomSpawner();
+		TargetNode->SpawnerComponent->SetAsRandomSpawner();
 	}
 	CloseUI();
 }

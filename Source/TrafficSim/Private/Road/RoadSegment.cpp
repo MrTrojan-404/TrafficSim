@@ -5,6 +5,7 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "Controller/TrafficPlayerController.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
 #include "Vehicle/TrafficVehicle.h"
 
@@ -181,7 +182,13 @@ void ARoadSegment::UpdateHeatmap()
 
 void ARoadSegment::OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed)
 {
-	ToggleRoadblock();
+	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+    
+	// Only allow roadblocks in Simulate Mode!
+	if (PC && PC->CurrentGameMode == ETrafficGameMode::Simulate)
+	{
+		ToggleRoadblock();
+	}
 }
 
 void ARoadSegment::ToggleRoadblock()
