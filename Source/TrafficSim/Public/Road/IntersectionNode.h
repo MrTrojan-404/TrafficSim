@@ -6,6 +6,14 @@
 
 class ARoadSegment;
 
+UENUM(BlueprintType)
+enum class ELightOverrideState : uint8
+{
+	Normal,
+	AllRed,
+	AllGreen
+};
+
 UCLASS()
 class TRAFFICSIM_API AIntersectionNode : public AActor
 {
@@ -49,7 +57,7 @@ public:
 
 	// ---> SPAWNER SETTINGS <---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Spawning")
-	TSubclassOf<class ATrafficVehicle> VehicleClassToSpawn;
+	TArray<TSubclassOf<class ATrafficVehicle>> VehicleClassesToSpawn;
 
 	// How often (in seconds) should this node pump out a car?
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Spawning")
@@ -65,6 +73,16 @@ public:
 
 	UFUNCTION()
 	void OnHoverEnd(AActor* TouchedActor);
+
+	// ---> TRAFFIC LIGHT OVERRIDES <---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Lights")
+	ELightOverrideState LightState = ELightOverrideState::Normal;
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Lights")
+	void SetLightState(ELightOverrideState NewState);
+
+	// Helper function to push the colors to the meshes
+	void ApplyLightColors();
 	
 protected:
 	virtual void BeginPlay() override;

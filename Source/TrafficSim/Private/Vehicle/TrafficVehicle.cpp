@@ -235,9 +235,23 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         bool bGridlockStop = false;
 
         // Rule A: The Red Light Check
-        if (ApproachingNode && ApproachingNode->CurrentGreenRoad != CurrentSegment)
+        if (ApproachingNode)
         {
-            bRedLightStop = true; 
+            if (ApproachingNode->LightState == ELightOverrideState::AllRed)
+            {
+                // Master STOP
+                bRedLightStop = true;
+            }
+            else if (ApproachingNode->LightState == ELightOverrideState::AllGreen)
+            {
+                // Master GO
+                bRedLightStop = false;
+            }
+            else if (ApproachingNode->CurrentGreenRoad != CurrentSegment)
+            {
+                // Normal Operation
+                bRedLightStop = true; 
+            }
         }
 
         // Rule B: "Don't Block the Box" (Gridlock Check)

@@ -6,9 +6,13 @@
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/FloatingPawnMovement.h"
+#include "Kismet/GameplayStatics.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
+#include "UI/ControlPanelWidget.h"
 #include "UI/SpawnerOverlayWidget.h"
+#include "Vehicle/TrafficSpawner.h"
+#include "Vehicle/TrafficVehicle.h"
 
 ATrafficPlayerController::ATrafficPlayerController()
 {
@@ -51,6 +55,8 @@ void ATrafficPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(ToggleCursorAction, ETriggerEvent::Started, this, &ATrafficPlayerController::ToggleMouseCursor);
 		EnhancedInputComponent->BindAction(SecondaryClickAction, ETriggerEvent::Started, this, &ATrafficPlayerController::OnSecondaryClick);
 		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &ATrafficPlayerController::OnScroll);
+		EnhancedInputComponent->BindAction(ToggleMenuAction, ETriggerEvent::Started, this, &ATrafficPlayerController::ToggleControlPanel);
+		
 	}
 }
 
@@ -248,3 +254,89 @@ void ATrafficPlayerController::HandleBuildModeClick()
 	}
 }
 
+void ATrafficPlayerController::ToggleControlPanel()
+{
+	if (ActiveControlPanel)
+	{
+		// Menu is open, close it!
+		ActiveControlPanel->RemoveFromParent();
+		ActiveControlPanel = nullptr;
+	}
+	else if (ControlPanelClass)
+	{
+		// Menu is closed, open it!
+		ActiveControlPanel = CreateWidget<UControlPanelWidget>(this, ControlPanelClass);
+		if (ActiveControlPanel)
+		{
+			ActiveControlPanel->AddToViewport(100); // Z-order 100 ensures it draws OVER the HUD
+		}
+	}
+}
+
+void ATrafficPlayerController::SetMasterLightState(ELightOverrideState MasterState)
+{
+	TArray<AActor*> AllNodes;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), AllNodes);
+
+	for (AActor* Actor : AllNodes)
+	{
+		AIntersectionNode* Node = Cast<AIntersectionNode>(Actor);
+		if (Node)
+		{
+			Node->SetLightState(MasterState);
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: All lights changed!"));
+}
+
+void ATrafficPlayerController::ClearCity()
+{
+	// 1. Destroy Vehicles first so they don't try to route on deleted roads
+	TArray<AActor*> Vehicles;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
+	for (AActor* A : Vehicles) A->Destroy();
+
+	// 2. Destroy Spawners
+	TArray<AActor*> Spawners;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficSpawner::StaticClass(), Spawners);
+	for (AActor* A : Spawners) A->Destroy();
+
+	// 3. Destroy Roads
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+	for (AActor* A : Roads) A->Destroy();
+
+	// 4. Destroy Intersections
+	TArray<AActor*> Nodes;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), Nodes);
+	for (AActor* A : Nodes) A->Destroy();
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Cleared!"));
+}
+
+void ATrafficPlayerController::ClearTraffic()
+{
+	// 1. Destroy all vehicles
+	TArray<AActor*> Vehicles;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
+	for (AActor* A : Vehicles)
+	{
+		A->Destroy();
+	}
+
+	// 2. Wipe the memory of the roads to prevent "Ghost Gridlock"
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+	for (AActor* A : Roads)
+	{
+		ARoadSegment* Road = Cast<ARoadSegment>(A);
+		if (Road)
+		{
+			Road->CurrentVehicleCount = 0;
+			Road->VehiclesForward.Empty();
+			Road->VehiclesBackward.Empty();
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Traffic Cleared!"));
+}

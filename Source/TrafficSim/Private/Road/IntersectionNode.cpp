@@ -79,28 +79,17 @@ void AIntersectionNode::CycleTrafficLight()
 {
 	if (IncomingSegments.Num() == 0) return;
 
-	// 1. Turn ALL incoming roads to RED first
-	for (ARoadSegment* Segment : IncomingSegments)
-	{
-		if (Segment)
-		{
-			Segment->SetIntersectionLightColor(this, FLinearColor::Red);
-		}
-	}
-
-	// 2. Increment the cycle index
 	GreenLightIndex++;
 	if (GreenLightIndex >= IncomingSegments.Num())
 	{
 		GreenLightIndex = 0;
 	}
 
-	// 3. Turn the newly active road to GREEN
 	CurrentGreenRoad = IncomingSegments[GreenLightIndex];
-	if (CurrentGreenRoad)
-	{
-		CurrentGreenRoad->SetIntersectionLightColor(this, FLinearColor::Green);
-	}
+
+	// Only physically change the light colors if we are in Normal mode!
+	// (If we are overridden, the cycle still tracks silently in the background)
+	ApplyLightColors();
 }
 
 void AIntersectionNode::SetHighlight(int32 StencilValue)
@@ -176,8 +165,8 @@ void AIntersectionNode::SetAsSpecificSpawner(AIntersectionNode* DestinationNode)
 
 void AIntersectionNode::SpawnVehicleRoutine()
 {
-	if (!VehicleClassToSpawn || !bIsActiveSpawner) return;
-
+	if (VehicleClassesToSpawn.Num() == 0 || !bIsActiveSpawner) return;
+	
 	UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
 	if (!Subsystem) return;
 
@@ -228,12 +217,54 @@ void AIntersectionNode::SpawnVehicleRoutine()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
 
-	ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(VehicleClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+	// ---> SELECT A RANDOM VEHICLE FROM THE ARRAY <---
+	int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
+	TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
+
+	// Safety check in case you have an empty slot in the array in the editor
+	if (!SelectedVehicleClass) return; 
+
+	// Pass the SelectedVehicleClass instead of the old single variable
+	ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
 
 	if (NewVehicle)
 	{
 		NewVehicle->DebugEndNode = ChosenDestination;
 		NewVehicle->SetRoute(FinalPath);
+	}
+}
+void AIntersectionNode::SetLightState(ELightOverrideState NewState)
+{
+	LightState = NewState;
+	ApplyLightColors();
+	UE_LOG(LogTemp, Warning, TEXT("Node %s light state changed to %d"), *GetName(), (uint8)LightState);
+}
+
+void AIntersectionNode::ApplyLightColors()
+{
+	// 1. ALL RED OVERRIDE
+	if (LightState == ELightOverrideState::AllRed)
+	{
+		for (ARoadSegment* Segment : IncomingSegments)
+			if (Segment) Segment->SetIntersectionLightColor(this, FLinearColor::Red);
+	}
+	// 2. ALL GREEN OVERRIDE
+	else if (LightState == ELightOverrideState::AllGreen)
+	{
+		for (ARoadSegment* Segment : IncomingSegments)
+			if (Segment) Segment->SetIntersectionLightColor(this, FLinearColor::Green);
+	}
+	// 3. NORMAL OPERATION
+	else
+	{
+		for (ARoadSegment* Segment : IncomingSegments)
+		{
+			if (Segment)
+			{
+				FLinearColor Color = (Segment == CurrentGreenRoad) ? FLinearColor::Green : FLinearColor::Red;
+				Segment->SetIntersectionLightColor(this, Color);
+			}
+		}
 	}
 }
 

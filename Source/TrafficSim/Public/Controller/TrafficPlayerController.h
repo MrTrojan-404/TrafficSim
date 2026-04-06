@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Road/IntersectionNode.h"
 #include "TrafficPlayerController.generated.h"
 
 struct FInputActionValue;
@@ -64,6 +65,29 @@ public:
 
 	// Called by the UI when the user clicks "Specific"
 	void StartSelectingDestination(class AIntersectionNode* SpawnerNode);
+
+	// MASTER MENU SETUP
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UControlPanelWidget> ControlPanelClass;
+
+	UPROPERTY()
+	UControlPanelWidget* ActiveControlPanel;
+
+	// Input action to open the menu (e.g., 'M' or 'Escape')
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* ToggleMenuAction;
+
+	// Core Functions
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control")
+	void SetMasterLightState(ELightOverrideState MasterState);
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control")
+	void ClearCity();
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control")
+	void ClearTraffic();
+	
+	void ToggleControlPanel();
 	
 protected:
 	virtual void BeginPlay() override;
