@@ -8,6 +8,7 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
+#include "UI/SpawnerOverlayWidget.h"
 
 ATrafficPlayerController::ATrafficPlayerController()
 {
@@ -48,7 +49,7 @@ void ATrafficPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(PrimaryClickAction, ETriggerEvent::Started, this, &ATrafficPlayerController::OnPrimaryClick);
 		EnhancedInputComponent->BindAction(ToggleModeAction, ETriggerEvent::Started, this, &ATrafficPlayerController::ToggleGameMode);
 		EnhancedInputComponent->BindAction(ToggleCursorAction, ETriggerEvent::Started, this, &ATrafficPlayerController::ToggleMouseCursor);
-		
+		EnhancedInputComponent->BindAction(SecondaryClickAction, ETriggerEvent::Started, this, &ATrafficPlayerController::OnSecondaryClick);
 		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &ATrafficPlayerController::OnScroll);
 	}
 }
@@ -92,7 +93,7 @@ void ATrafficPlayerController::ToggleGameMode()
 		// If we switch modes while a node is selected, turn off its highlight!
 		if (FirstSelectedNode)
 		{
-			FirstSelectedNode->SetHighlight(false);
+			FirstSelectedNode->SetHighlight(0); // 0 - no color
 			FirstSelectedNode = nullptr;
 		}
 	}
@@ -104,9 +105,15 @@ void ATrafficPlayerController::ToggleGameMode()
 	OnGameModeChangedDelegate.Broadcast(CurrentGameMode);
 }
 
+void ATrafficPlayerController::StartSelectingDestination(AIntersectionNode* SpawnerNode)
+{
+	PendingSpawnerNode = SpawnerNode;
+	UE_LOG(LogTemp, Warning, TEXT("Please click a destination node..."));
+	// Notice we leave the Stencil Highlight ON here so the player remembers which spawner they are configuring!
+}
+
 void ATrafficPlayerController::OnPrimaryClick()
 {
-	// Ignore all clicks if we are flying the camera
 	if (!bShowMouseCursor) return;
 
 	if (CurrentGameMode == ETrafficGameMode::Build)
@@ -115,7 +122,52 @@ void ATrafficPlayerController::OnPrimaryClick()
 	}
 	else
 	{
-		// Simulate mode logic (e.g., your Rush Hour spawn)
+		FHitResult HitResult;
+		if (GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+		{
+			AIntersectionNode* ClickedNode = Cast<AIntersectionNode>(HitResult.GetActor());
+			if (!ClickedNode) return;
+
+			// 1. Specific Destination Linking
+			if (PendingSpawnerNode)
+			{
+				if (PendingSpawnerNode != ClickedNode)
+				{
+					PendingSpawnerNode->SetAsSpecificSpawner(ClickedNode);
+					PendingSpawnerNode->SetHighlight(0);
+					PendingSpawnerNode = nullptr;
+				}
+			}
+		}
+	}
+}
+
+void ATrafficPlayerController::OnSecondaryClick()
+{
+	if (!bShowMouseCursor || CurrentGameMode == ETrafficGameMode::Build) return;
+
+	FHitResult HitResult;
+	if (GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+	{
+		AIntersectionNode* ClickedNode = Cast<AIntersectionNode>(HitResult.GetActor());
+		
+		// Open the UI on Right Click!
+		if (ClickedNode && SpawnerWidgetClass && !PendingSpawnerNode)
+		{
+			if (ActiveSpawnerWidget)
+			{
+				ActiveSpawnerWidget->CloseUI(); 
+			}
+
+			ActiveSpawnerWidget = CreateWidget<USpawnerOverlayWidget>(this, SpawnerWidgetClass);
+			if (ActiveSpawnerWidget)
+			{
+				ActiveSpawnerWidget->SetTargetNode(ClickedNode);
+				ActiveSpawnerWidget->AddToViewport();
+				
+				ClickedNode->SetHighlight(252); 
+			}
+		}
 	}
 }
 
@@ -134,7 +186,7 @@ void ATrafficPlayerController::HandleBuildModeClick()
 				FirstSelectedNode = ClickedNode;
 				
 				// TURN ON HIGHLIGHT
-				FirstSelectedNode->SetHighlight(true);
+				FirstSelectedNode->SetHighlight(254); //254 - Green
 				
 				UE_LOG(LogTemp, Warning, TEXT("First Node Selected! Click another to connect."));
 				return;
@@ -159,7 +211,7 @@ void ATrafficPlayerController::HandleBuildModeClick()
 						NewRoad->FinishSpawning(SpawnTransform);
 					}
 					// TURN OFF HIGHLIGHT 
-					FirstSelectedNode->SetHighlight(false);
+					FirstSelectedNode->SetHighlight(0);
 					FirstSelectedNode = nullptr; 
 					return;
 				}
@@ -187,7 +239,7 @@ void ATrafficPlayerController::HandleBuildModeClick()
 
 			if (FirstSelectedNode)
 			{
-				FirstSelectedNode->SetHighlight(false);
+				FirstSelectedNode->SetHighlight(0);
 			}			
 			// If they clicked the ground, clear out any half-started road connections
 			FirstSelectedNode = nullptr;

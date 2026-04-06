@@ -35,20 +35,58 @@ public:
 	void PlayerForceLightChange();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UStaticMeshComponent* ClickableMesh;
+	UStaticMeshComponent* RepresentationMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UPointLightComponent* TrafficLightVisual;
 	
 	UFUNCTION()
-	void OnIntersectionClicked(UPrimitiveComponent* TouchedComponent, FKey ButtonPressed);
-
+	void OnIntersectionClicked(AActor* TouchedActor, FKey ButtonPressed);
+	
 	// Toggles the Custom Depth rendering for the highlight material
 	UFUNCTION(BlueprintCallable, Category = "Visuals")
-	void SetHighlight(bool bHighlight);
+	void SetHighlight(int32 StencilValue);
+
+	// ---> SPAWNER SETTINGS <---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Spawning")
+	TSubclassOf<class ATrafficVehicle> VehicleClassToSpawn;
+
+	// How often (in seconds) should this node pump out a car?
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Spawning")
+	float SpawnInterval = 2.5f;
+
+	// The functions called by our UI/Controller
+	void SetAsRandomSpawner();
+	void SetAsSpecificSpawner(AIntersectionNode* DestinationNode);
+
+	// HOVER EVENTS
+	UFUNCTION()
+	void OnHoverBegin(AActor* TouchedActor);
+
+	UFUNCTION()
+	void OnHoverEnd(AActor* TouchedActor);
+	
 protected:
 	virtual void BeginPlay() override;
 
+	// Internal Spawner State
+	bool bIsActiveSpawner = false;
+	bool bIsRandomDest = true;
+	
+	UPROPERTY()
+	AIntersectionNode* SpecificDestNode = nullptr;
+
+	FTimerHandle SpawnerTimerHandle;
+
+	// The actual function that runs every X seconds
+	UFUNCTION()
+	void SpawnVehicleRoutine();
+
+	// Memory to ensure hover doesn't overwrite a permanent highlight
+	int32 PermanentStencil = 0;
+	void ApplyStencil(int32 StencilValue);
+
+	
 #if WITH_EDITOR
 	virtual void PostEditMove(bool bFinished) override;
 #endif

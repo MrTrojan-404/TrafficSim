@@ -53,13 +53,27 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnGameModeChanged OnGameModeChangedDelegate;
+
+	// The Spawner UI Class
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class USpawnerOverlayWidget> SpawnerWidgetClass;
+	
+	// A reference to the currently open widget so we don't spawn 50 of them
+	UPROPERTY()
+	USpawnerOverlayWidget* ActiveSpawnerWidget;
+
+	// Called by the UI when the user clicks "Specific"
+	void StartSelectingDestination(class AIntersectionNode* SpawnerNode);
 	
 protected:
 	virtual void BeginPlay() override;
 
 	virtual void SetupInputComponent() override;
 
-
+	// The node currently waiting for a destination
+	UPROPERTY()
+	AIntersectionNode* PendingSpawnerNode = nullptr;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputMappingContext* DefaultMappingContext;
 
@@ -74,12 +88,15 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* ScrollAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* SecondaryClickAction;
 	
 private:
 	void ToggleMouseCursor();
 	void ToggleGameMode();
 	void OnPrimaryClick();
 	void HandleBuildModeClick();
-
+	void OnSecondaryClick();
 	void OnScroll(const FInputActionValue& Value);
 };
