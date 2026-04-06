@@ -15,7 +15,8 @@ UENUM(BlueprintType)
 enum class ETrafficGameMode : uint8
 {
 	Simulate	UMETA(DisplayName = "Simulate Mode"),
-	Build		UMETA(DisplayName = "Build Mode")
+	Build		UMETA(DisplayName = "Build Mode"),
+	Delete    UMETA(DisplayName = "Delete Mode")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameModeChanged, ETrafficGameMode, NewMode);
@@ -88,6 +89,13 @@ public:
 	void ClearTraffic();
 	
 	void ToggleControlPanel();
+
+	// Master Lane Control
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control")
+	void ToggleCityDriveSide();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Control")
+	bool bMasterDriveOnLeft = true;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -117,6 +125,7 @@ protected:
 	class UInputAction* SecondaryClickAction;
 	
 private:
+	void HandleDeleteModeClick();
 	void ToggleMouseCursor();
 	void ToggleGameMode();
 	void OnPrimaryClick();

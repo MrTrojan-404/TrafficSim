@@ -97,7 +97,13 @@ TArray<ARoadSegment*> UTrafficNetworkSubsystem::FindPath(AIntersectionNode* Star
         {
             if (!Segment || !Segment->EndNode) continue;
 
+            // 1: Ignore deleted roads in the A* Graph
+            if (!IsValid(Segment) || !IsValid(Segment->EndNode) || !IsValid(Segment->StartNode)) continue;
+            
             AIntersectionNode* NeighborNode = (Segment->StartNode == CurrentRecord->Node) ? Segment->EndNode : Segment->StartNode;
+
+            //Ignore deleted intersections
+            if (!IsValid(NeighborNode)) continue;
             
             // Calculate movement cost considering dynamic traffic congestion
             float TentativeGCost = CurrentRecord->GCost + Segment->GetRoutingWeight();

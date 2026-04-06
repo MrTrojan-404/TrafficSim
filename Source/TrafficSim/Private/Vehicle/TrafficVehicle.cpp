@@ -50,7 +50,8 @@ void ATrafficVehicle::Tick(float DeltaTime)
 void ATrafficVehicle::RegisterToRoad()
 {
     if (!CurrentSegment || !CurrentSegment->StartNode || !CurrentSegment->EndNode) return;
-
+    if (!IsValid(CurrentSegment) || !IsValid(CurrentSegment->StartNode) || !IsValid(CurrentSegment->EndNode)) return;
+    
     AIntersectionNode* TargetNode = nullptr;
 
     // If there is another road after this one, our target is the intersection connecting them
@@ -58,14 +59,22 @@ void ATrafficVehicle::RegisterToRoad()
     {
         ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
         
-        // Find the shared node between our current road and the next road
-        if (CurrentSegment->EndNode == NextSegment->StartNode || CurrentSegment->EndNode == NextSegment->EndNode)
+        //  Make sure the next road wasn't deleted by the user
+        if (IsValid(NextSegment))
         {
-            TargetNode = CurrentSegment->EndNode;
+            // Find the shared node between our current road and the next road
+            if (CurrentSegment->EndNode == NextSegment->StartNode || CurrentSegment->EndNode == NextSegment->EndNode)
+            {
+                TargetNode = CurrentSegment->EndNode;
+            }
+            else
+            {
+                TargetNode = CurrentSegment->StartNode;
+            }
         }
         else
         {
-            TargetNode = CurrentSegment->StartNode;
+            TargetNode = DebugEndNode; // Fallback to final destination
         }
     }
     else
@@ -124,6 +133,13 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
 {
     if (!CurrentSegment || !CurrentSegment->SplineComponent) return;
 
+    // 1: Did the user delete the road we are currently on, or our destination?
+    if (!IsValid(CurrentSegment) || !IsValid(CurrentSegment->SplineComponent) || !IsValid(DebugEndNode))
+    {
+        Destroy();
+        return;
+    }
+    
     TargetSpeed = MaxSpeed;
     float DistanceToCarAhead = 999999.0f;
     float SegmentLength = CurrentSegment->SplineComponent->GetSplineLength();
@@ -137,7 +153,10 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     {
         if (OtherCar == this) continue;
 
-        // ---> FIX 1: ONLY Ambulances get to ignore cars that have pulled over! <---
+        // Ignore cars that have been vaporized
+        if (!IsValid(OtherCar) || OtherCar == this) continue;
+        
+        //  ONLY Ambulances get to ignore cars that have pulled over
         if (bIsEmergencyVehicle && OtherCar->bIsPullingOver) continue;
 
         // Positive Gap = OtherCar is Ahead. Negative Gap = OtherCar is Behind.
@@ -191,13 +210,13 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
     }
 
-    // --->  4. DYNAMIC GPS REROUTING (Works for the whole lane!) <---
+    // 4. DYNAMIC GPS REROUTING (Works for the whole lane!) 
     if (PathIndex + 1 < CurrentPath.Num())
     {
         ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
-        
+
         // If the user drops a roadblock on our upcoming turn...
-        if (NextSegment && NextSegment->bIsBlocked)
+        if (IsValid(NextSegment) && NextSegment->bIsBlocked)
         {
             // Only check for a detour every 2 seconds to prevent massive CPU lag
             float CurrentTime = GetWorld()->GetTimeSeconds();
@@ -255,11 +274,12 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
 
         // Rule B: "Don't Block the Box" (Gridlock Check)
-        // Check if the next road is physically impossible to enter
         if (PathIndex + 1 < CurrentPath.Num())
         {
             ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
-            if (NextSegment)
+            
+            // ---> SAFETY FIX 3: Make sure the next road exists before checking its capacity! <---
+            if (IsValid(NextSegment)) 
             {
                 if (NextSegment->bIsBlocked || NextSegment->CurrentVehicleCount >= NextSegment->MaxCapacity)
                 {
@@ -300,6 +320,14 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         if (PathIndex < CurrentPath.Num())
         {
             CurrentSegment = CurrentPath[PathIndex];
+            
+            // ---> SAFETY FIX 2: Did the user delete the road we are about to turn onto? <---
+            if (!IsValid(CurrentSegment) || !IsValid(CurrentSegment->StartNode) || !IsValid(CurrentSegment->EndNode))
+            {
+                Destroy(); // Vaporize the car before it accesses dead memory!
+                return;
+            }
+
             RegisterToRoad(); 
         }
         else
@@ -308,7 +336,6 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
             return;
         }
     }
-
     // 8. UPDATE 3D TRANSFORM (LANE OFFSET LOGIC)
     if (CurrentSegment) // <-- REMOVED the speed check so stopped cars can still pull over!
     {

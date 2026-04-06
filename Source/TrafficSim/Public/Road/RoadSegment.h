@@ -98,6 +98,15 @@ public:
 	// The function to dynamically snap the road between two nodes at runtime
 	UFUNCTION(BlueprintCallable, Category = "Building")
 	void SetupConnection(class AIntersectionNode* InStartNode, class AIntersectionNode* InEndNode);
+
+	// Safely unregisters from intersections and destroys cars before destroying itself
+	UFUNCTION(BlueprintCallable, Category = "Building")
+	void DestroyRoadSafe();
+
+	// Called by the Master Menu to swap lanes at runtime
+	UFUNCTION(BlueprintCallable, Category = "Traffic Logic")
+	void UpdateDriveSide(bool bDriveLeft);
+	
 protected:
 	virtual void BeginPlay() override;
 

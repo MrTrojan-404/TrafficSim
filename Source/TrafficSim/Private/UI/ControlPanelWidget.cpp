@@ -12,8 +12,17 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_LightsGreen) Btn_LightsGreen->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLightsGreen);
 	if (Btn_ClearCity) Btn_ClearCity->OnClicked.AddDynamic(this, &UControlPanelWidget::OnClearCityClicked);
 	if (Btn_Close) Btn_Close->OnClicked.AddDynamic(this, &UControlPanelWidget::OnCloseClicked);
+	if (Btn_ToggleDriveSide) Btn_ToggleDriveSide->OnClicked.AddDynamic(this, &UControlPanelWidget::OnToggleDriveSideClicked);
 }
 
+void UControlPanelWidget::OnToggleDriveSideClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->ToggleCityDriveSide();
+	}
+	
+}
 void UControlPanelWidget::OnLightsNormal()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))

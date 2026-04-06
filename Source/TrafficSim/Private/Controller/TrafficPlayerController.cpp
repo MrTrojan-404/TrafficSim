@@ -92,16 +92,21 @@ void ATrafficPlayerController::ToggleMouseCursor()
 
 void ATrafficPlayerController::ToggleGameMode()
 {
+	// Clean up highlights if we are leaving Build Mode
+	if (FirstSelectedNode)
+	{
+		FirstSelectedNode->SetHighlight(0);
+		FirstSelectedNode = nullptr;
+	}
+
+	// Cycle: Simulate -> Build -> Delete -> Simulate
 	if (CurrentGameMode == ETrafficGameMode::Simulate)
 	{
 		CurrentGameMode = ETrafficGameMode::Build;
-		
-		// If we switch modes while a node is selected, turn off its highlight!
-		if (FirstSelectedNode)
-		{
-			FirstSelectedNode->SetHighlight(0); // 0 - no color
-			FirstSelectedNode = nullptr;
-		}
+	}
+	else if (CurrentGameMode == ETrafficGameMode::Build)
+	{
+		CurrentGameMode = ETrafficGameMode::Delete;
 	}
 	else
 	{
@@ -118,6 +123,28 @@ void ATrafficPlayerController::StartSelectingDestination(AIntersectionNode* Spaw
 	// Notice we leave the Stencil Highlight ON here so the player remembers which spawner they are configuring!
 }
 
+void ATrafficPlayerController::HandleDeleteModeClick()
+{
+	FHitResult HitResult;
+	if (GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+	{
+		AActor* HitActor = HitResult.GetActor();
+
+		// Did we click a Road?
+		if (ARoadSegment* ClickedRoad = Cast<ARoadSegment>(HitActor))
+		{
+			ClickedRoad->DestroyRoadSafe();
+			UE_LOG(LogTemp, Warning, TEXT("Deleted Road!"));
+		}
+		// Did we click an Intersection?
+		else if (AIntersectionNode* ClickedNode = Cast<AIntersectionNode>(HitActor))
+		{
+			ClickedNode->DestroyIntersectionSafe();
+			UE_LOG(LogTemp, Warning, TEXT("Deleted Intersection and its connected roads!"));
+		}
+	}
+}
+
 void ATrafficPlayerController::OnPrimaryClick()
 {
 	if (!bShowMouseCursor) return;
@@ -125,6 +152,10 @@ void ATrafficPlayerController::OnPrimaryClick()
 	if (CurrentGameMode == ETrafficGameMode::Build)
 	{
 		HandleBuildModeClick();
+	}
+	else if (CurrentGameMode == ETrafficGameMode::Delete) // <--- NEW ROUTING
+	{
+		HandleDeleteModeClick();
 	}
 	else
 	{
@@ -339,4 +370,21 @@ void ATrafficPlayerController::ClearTraffic()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Traffic Cleared!"));
+}
+void ATrafficPlayerController::ToggleCityDriveSide()
+{
+	bMasterDriveOnLeft = !bMasterDriveOnLeft;
+
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+	
+	for (AActor* A : Roads)
+	{
+		if (ARoadSegment* Road = Cast<ARoadSegment>(A))
+		{
+			Road->UpdateDriveSide(bMasterDriveOnLeft);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Switched drive side to %s"), bMasterDriveOnLeft ? TEXT("LEFT") : TEXT("RIGHT"));
 }

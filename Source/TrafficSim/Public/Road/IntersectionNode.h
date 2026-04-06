@@ -83,6 +83,10 @@ public:
 
 	// Helper function to push the colors to the meshes
 	void ApplyLightColors();
+
+	// Destroys all connected roads, then destroys itself
+	UFUNCTION(BlueprintCallable, Category = "Building")
+	void DestroyIntersectionSafe();
 	
 protected:
 	virtual void BeginPlay() override;

@@ -6,6 +6,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
+#include "Vehicle/TrafficVehicle.h"
 
 
 ARoadSegment::ARoadSegment()
@@ -286,5 +287,58 @@ void ARoadSegment::SetupConnection(AIntersectionNode* InStartNode, AIntersection
 	{
 		EndNode->OutgoingSegments.AddUnique(this);
 		EndNode->IncomingSegments.AddUnique(this);
+	}
+}
+
+void ARoadSegment::DestroyRoadSafe()
+{
+	//Copy the arrays, then empty them BEFORE destroying the cars
+	TArray<ATrafficVehicle*> ForwardCopy = VehiclesForward;
+	TArray<ATrafficVehicle*> BackwardCopy = VehiclesBackward;
+
+	VehiclesForward.Empty();
+	VehiclesBackward.Empty();
+
+	// Vaporize the cars
+	for (ATrafficVehicle* V : ForwardCopy) if (IsValid(V)) V->Destroy();
+	for (ATrafficVehicle* V : BackwardCopy) if (IsValid(V)) V->Destroy();
+
+	// Unhook from Nodes
+	if (StartNode)
+	{
+		StartNode->OutgoingSegments.Remove(this);
+		StartNode->IncomingSegments.Remove(this);
+	}
+
+	if (EndNode)
+	{
+		EndNode->OutgoingSegments.Remove(this);
+		EndNode->IncomingSegments.Remove(this);
+	}
+
+	Destroy();
+}
+
+void ARoadSegment::UpdateDriveSide(bool bDriveLeft)
+{
+	bDriveOnLeft = bDriveLeft;
+
+	// Re-calculate the curb offsets for the traffic lights
+	float Length = SplineComponent->GetSplineLength();
+	float StopDist = 800.0f; 
+	float HeightOffset = 300.0f; 
+	float LightOffset = bDriveOnLeft ? -150.0f : 150.0f;
+
+	if (Length > StopDist)
+	{
+		// Move Forward Light
+		FVector FwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
+		FVector FwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
+		ForwardLightMesh->SetWorldLocation(FwdLoc + (FwdRight * LightOffset) + FVector(0, 0, HeightOffset));
+
+		// Move Backward Light
+		FVector BwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
+		FVector BwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
+		BackwardLightMesh->SetWorldLocation(BwdLoc + (BwdRight * -LightOffset) + FVector(0, 0, HeightOffset));
 	}
 }

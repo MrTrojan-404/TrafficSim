@@ -36,6 +36,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_Close;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ToggleDriveSide;
+	
 private:
 	// Button bind functions
 	UFUNCTION() void OnLightsNormal();
@@ -44,5 +47,5 @@ private:
 	UFUNCTION() void OnClearCityClicked();
 	UFUNCTION() void OnCloseClicked();
 	UFUNCTION() void OnClearTrafficClicked();
-	
+	UFUNCTION() void OnToggleDriveSideClicked();
 };

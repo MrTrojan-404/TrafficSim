@@ -90,12 +90,16 @@ void UTrafficHUDWidget::HandleGameModeChanged(ETrafficGameMode NewMode)
 	if (NewMode == ETrafficGameMode::Build)
 	{
 		Txt_GameMode->SetText(FText::FromString(TEXT("BUILD MODE")));
-		// Tint the text yellow/orange so the user obviously knows they are building
-		Txt_GameMode->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.8f, 0.0f, 1.0f)));
+		Txt_GameMode->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.8f, 0.0f, 1.0f))); // Gold
+	}
+	else if (NewMode == ETrafficGameMode::Delete)
+	{
+		Txt_GameMode->SetText(FText::FromString(TEXT("DELETE MODE")));
+		Txt_GameMode->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.0f, 0.0f, 1.0f))); // Bright Red
 	}
 	else
 	{
 		Txt_GameMode->SetText(FText::FromString(TEXT("SIMULATE MODE")));
-		Txt_GameMode->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)));
+		Txt_GameMode->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f))); // White
 	}
 }

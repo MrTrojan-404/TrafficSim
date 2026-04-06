@@ -268,6 +268,26 @@ void AIntersectionNode::ApplyLightColors()
 	}
 }
 
+void AIntersectionNode::DestroyIntersectionSafe()
+{
+	// We must make a temporary COPY of the arrays. 
+	// If we iterate through the original array while DestroyRoadSafe() is modifying it, the game will crash!
+	TArray<ARoadSegment*> RoadsToDestroy;
+	RoadsToDestroy.Append(IncomingSegments);
+	RoadsToDestroy.Append(OutgoingSegments);
+
+	for (ARoadSegment* Road : RoadsToDestroy)
+	{
+		if (IsValid(Road))
+		{
+			Road->DestroyRoadSafe();
+		}
+	}
+
+	// Now that the roads are gone, we can safely destroy ourselves
+	Destroy();
+}
+
 #if WITH_EDITOR
 void AIntersectionNode::PostEditMove(bool bFinished)
 {
