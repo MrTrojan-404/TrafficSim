@@ -78,6 +78,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UTrafficSpawnerComponent* SpawnerComponent;
+
+	// Unique ID used for Save/Load serialization
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Graph")
+	FGuid UniqueID;
 	
 protected:
 	virtual void BeginPlay() override;

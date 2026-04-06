@@ -13,6 +13,9 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_ClearCity) Btn_ClearCity->OnClicked.AddDynamic(this, &UControlPanelWidget::OnClearCityClicked);
 	if (Btn_Close) Btn_Close->OnClicked.AddDynamic(this, &UControlPanelWidget::OnCloseClicked);
 	if (Btn_ToggleDriveSide) Btn_ToggleDriveSide->OnClicked.AddDynamic(this, &UControlPanelWidget::OnToggleDriveSideClicked);
+	if (Btn_SaveLayout) Btn_SaveLayout->OnClicked.AddDynamic(this, &UControlPanelWidget::OnSaveLayoutClicked);
+	if (Btn_LoadLayout) Btn_LoadLayout->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadLayoutClicked);
+	if (Btn_LoadDefault) Btn_LoadDefault->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadDefaultClicked);
 }
 
 void UControlPanelWidget::OnToggleDriveSideClicked()
@@ -69,4 +72,22 @@ void UControlPanelWidget::OnClearTrafficClicked()
 	{
 		PC->ClearTraffic();
 	}
+}
+void UControlPanelWidget::OnSaveLayoutClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer())) PC->SaveCityLayout();
+}
+
+void UControlPanelWidget::OnLoadLayoutClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->LoadCityLayout();
+		OnCloseClicked(); // Close menu to see the loaded city!
+	}
+}
+
+void UControlPanelWidget::OnLoadDefaultClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer())) PC->LoadDefaultLayout();
 }

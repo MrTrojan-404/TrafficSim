@@ -38,7 +38,12 @@ AIntersectionNode::AIntersectionNode()
 void AIntersectionNode::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// GENERATE UNIQUE ID FOR SAVING
+	if (!UniqueID.IsValid())
+	{
+		UniqueID = FGuid::NewGuid();
+	}
 	OnClicked.AddDynamic(this, &AIntersectionNode::OnIntersectionClicked);
 	OnBeginCursorOver.AddDynamic(this, &AIntersectionNode::OnHoverBegin);
 	OnEndCursorOver.AddDynamic(this, &AIntersectionNode::OnHoverEnd);

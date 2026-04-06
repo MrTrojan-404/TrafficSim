@@ -38,6 +38,15 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_ToggleDriveSide;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_SaveLayout;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_LoadLayout;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_LoadDefault;
 	
 private:
 	// Button bind functions
@@ -48,4 +57,7 @@ private:
 	UFUNCTION() void OnCloseClicked();
 	UFUNCTION() void OnClearTrafficClicked();
 	UFUNCTION() void OnToggleDriveSideClicked();
+	UFUNCTION() void OnSaveLayoutClicked();
+	UFUNCTION() void OnLoadLayoutClicked();
+	UFUNCTION() void OnLoadDefaultClicked();
 };

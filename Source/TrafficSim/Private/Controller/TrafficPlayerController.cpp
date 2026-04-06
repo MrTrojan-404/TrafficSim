@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
+#include "SaveGame/TrafficSaveGame.h"
 #include "UI/ControlPanelWidget.h"
 #include "UI/SpawnerOverlayWidget.h"
 #include "Vehicle/TrafficSpawner.h"
@@ -399,4 +400,107 @@ void ATrafficPlayerController::ToggleCityDriveSide()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Switched drive side to %s"), bMasterDriveOnLeft ? TEXT("LEFT") : TEXT("RIGHT"));
+}
+
+void ATrafficPlayerController::SaveCityLayout()
+{
+	UTrafficSaveGame* SaveGameInstance = Cast<UTrafficSaveGame>(UGameplayStatics::CreateSaveGameObject(UTrafficSaveGame::StaticClass()));
+	if (!SaveGameInstance) return;
+
+	// 1. Save Intersections
+	TArray<AActor*> Nodes;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), Nodes);
+	for (AActor* A : Nodes)
+	{
+		if (AIntersectionNode* Node = Cast<AIntersectionNode>(A))
+		{
+			FNodeSaveData NodeData;
+			NodeData.NodeID = Node->UniqueID;
+			NodeData.NodeTransform = Node->GetActorTransform();
+			SaveGameInstance->SavedNodes.Add(NodeData);
+		}
+	}
+
+	// 2. Save Roads
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+	for (AActor* A : Roads)
+	{
+		if (ARoadSegment* Road = Cast<ARoadSegment>(A))
+		{
+			// Only save roads that are fully connected
+			if (Road->StartNode && Road->EndNode)
+			{
+				FRoadSaveData RoadData;
+				RoadData.StartNodeID = Road->StartNode->UniqueID;
+				RoadData.EndNodeID = Road->EndNode->UniqueID;
+				SaveGameInstance->SavedRoads.Add(RoadData);
+			}
+		}
+	}
+
+	// 3. Write to disk
+	UGameplayStatics::SaveGameToSlot(SaveGameInstance, TEXT("TrafficSlot1"), 0);
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Layout Saved!"));
+}
+
+void ATrafficPlayerController::LoadCityLayout()
+{
+	if (!UGameplayStatics::DoesSaveGameExist(TEXT("TrafficSlot1"), 0))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: No save file found!"));
+		return;
+	}
+
+	UTrafficSaveGame* LoadGameInstance = Cast<UTrafficSaveGame>(UGameplayStatics::LoadGameFromSlot(TEXT("TrafficSlot1"), 0));
+	if (!LoadGameInstance || !IntersectionClassToSpawn || !RoadClassToSpawn) return;
+
+	// 1. Wipe the current city
+	ClearCity();
+
+	// A map to help us quickly look up spawned nodes by their old ID
+	TMap<FGuid, AIntersectionNode*> SpawnedNodesMap;
+
+	// 2. Spawn the saved Nodes
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	for (const FNodeSaveData& NodeData : LoadGameInstance->SavedNodes)
+	{
+		AIntersectionNode* NewNode = GetWorld()->SpawnActor<AIntersectionNode>(IntersectionClassToSpawn, NodeData.NodeTransform, SpawnParams);
+		if (NewNode)
+		{
+			// Assign the saved ID so the roads can find it
+			NewNode->UniqueID = NodeData.NodeID;
+			SpawnedNodesMap.Add(NodeData.NodeID, NewNode);
+		}
+	}
+
+	// 3. Spawn the saved Roads and connect them
+	for (const FRoadSaveData& RoadData : LoadGameInstance->SavedRoads)
+	{
+		if (SpawnedNodesMap.Contains(RoadData.StartNodeID) && SpawnedNodesMap.Contains(RoadData.EndNodeID))
+		{
+			AIntersectionNode* RetrievedStart = SpawnedNodesMap[RoadData.StartNodeID];
+			AIntersectionNode* RetrievedEnd = SpawnedNodesMap[RoadData.EndNodeID];
+
+			FTransform SpawnTransform(FRotator::ZeroRotator, FVector::ZeroVector);
+			ARoadSegment* NewRoad = GetWorld()->SpawnActorDeferred<ARoadSegment>(RoadClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+            
+			if (NewRoad)
+			{
+				NewRoad->SetupConnection(RetrievedStart, RetrievedEnd);
+				NewRoad->FinishSpawning(SpawnTransform);
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Layout Loaded!"));
+}
+
+void ATrafficPlayerController::LoadDefaultLayout()
+{
+	// Reloading the current level instantly restores the editor-placed layout!
+	FString CurrentLevelName = GetWorld()->GetName();
+	UGameplayStatics::OpenLevel(this, FName(*CurrentLevelName), false);
 }

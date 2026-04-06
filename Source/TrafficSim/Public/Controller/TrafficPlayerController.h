@@ -96,6 +96,16 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Control")
 	bool bMasterDriveOnLeft = true;
+
+	// ---> SAVE / LOAD SYSTEM <---
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Saving")
+	void SaveCityLayout();
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Saving")
+	void LoadCityLayout();
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Saving")
+	void LoadDefaultLayout();
 	
 protected:
 	virtual void BeginPlay() override;
