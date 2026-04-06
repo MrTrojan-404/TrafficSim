@@ -106,6 +106,20 @@ void AIntersectionNode::CycleTrafficLight()
 	}
 }
 
+void AIntersectionNode::SetHighlight(bool bHighlight)
+{
+	// Get all static meshes on this actor
+	TArray<UStaticMeshComponent*> AllMeshes;
+	GetComponents<UStaticMeshComponent>(AllMeshes);
+
+	for (UStaticMeshComponent* Mesh : AllMeshes)
+	{
+		Mesh->SetRenderCustomDepth(bHighlight);
+		Mesh->SetCustomDepthStencilValue(bHighlight ? 254 : 0);
+	}
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, FString::Printf(TEXT("Highlight Set To: %d"), bHighlight ? 1 : 0));
+}
+
 void AIntersectionNode::PlayerForceLightChange()
 {
 	// Clear the existing automatic timer

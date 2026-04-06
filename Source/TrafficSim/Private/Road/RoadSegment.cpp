@@ -30,6 +30,10 @@ ARoadSegment::ARoadSegment()
 	RoadblockVisual = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadblockVisual"));
 	RoadblockVisual->SetCollisionProfileName(TEXT("NoCollision"));
 	RoadblockVisual->SetVisibility(false); // Hidden by default
+
+	if (SplineComponent) SplineComponent->SetMobility(EComponentMobility::Movable);
+	if (ForwardLightMesh) ForwardLightMesh->SetMobility(EComponentMobility::Movable);
+	if (BackwardLightMesh) BackwardLightMesh->SetMobility(EComponentMobility::Movable);
 }
 void ARoadSegment::OnConstruction(const FTransform& Transform)
 {
@@ -256,3 +260,31 @@ float ARoadSegment::GetRoutingWeight() const
 	return BaseWeight * TrafficPenalty;
 }
 
+void ARoadSegment::SetupConnection(AIntersectionNode* InStartNode, AIntersectionNode* InEndNode)
+{
+	if (!InStartNode || !InEndNode || !SplineComponent) return;
+
+	StartNode = InStartNode;
+	EndNode = InEndNode;
+
+	// Use absolute world coordinates! No relative math needed.
+	TArray<FVector> NewSplinePoints = { StartNode->GetActorLocation(), EndNode->GetActorLocation() };
+
+	SplineComponent->SetSplinePoints(NewSplinePoints, ESplineCoordinateSpace::World, true);
+
+	SplineComponent->SetSplinePointType(0, ESplinePointType::Linear);
+	SplineComponent->SetSplinePointType(1, ESplinePointType::Linear);
+	SplineComponent->UpdateSpline();
+
+	if (StartNode)
+	{
+		StartNode->OutgoingSegments.AddUnique(this);
+		StartNode->IncomingSegments.AddUnique(this);
+	}
+    
+	if (EndNode)
+	{
+		EndNode->OutgoingSegments.AddUnique(this);
+		EndNode->IncomingSegments.AddUnique(this);
+	}
+}

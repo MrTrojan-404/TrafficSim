@@ -42,6 +42,10 @@ public:
 	
 	UFUNCTION()
 	void OnIntersectionClicked(UPrimitiveComponent* TouchedComponent, FKey ButtonPressed);
+
+	// Toggles the Custom Depth rendering for the highlight material
+	UFUNCTION(BlueprintCallable, Category = "Visuals")
+	void SetHighlight(bool bHighlight);
 protected:
 	virtual void BeginPlay() override;
 

@@ -94,7 +94,10 @@ public:
 	// Stores the dynamic materials so we don't recreate them every frame
 	UPROPERTY()
 	TArray<class UMaterialInstanceDynamic*> HeatmapMaterials;
-	
+
+	// The function to dynamically snap the road between two nodes at runtime
+	UFUNCTION(BlueprintCallable, Category = "Building")
+	void SetupConnection(class AIntersectionNode* InStartNode, class AIntersectionNode* InEndNode);
 protected:
 	virtual void BeginPlay() override;
 

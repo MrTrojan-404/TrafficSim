@@ -25,9 +25,15 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_AverageCongestion;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_GameMode;
+	
 private:
 	FTimerHandle StatUpdateTimer;
 
 	UFUNCTION()
 	void UpdateStats();
+
+	UFUNCTION()
+	void HandleGameModeChanged(ETrafficGameMode NewMode);
 };
