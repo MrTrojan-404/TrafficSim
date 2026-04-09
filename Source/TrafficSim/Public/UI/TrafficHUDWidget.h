@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Controller/TrafficPlayerController.h"
 #include "TrafficHUDWidget.generated.h"
 
 class UTextBlock;
@@ -27,7 +28,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_GameMode;
-	
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_CompletedTrips;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_AverageTravelTime;
 private:
 	FTimerHandle StatUpdateTimer;
 

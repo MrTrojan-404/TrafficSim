@@ -106,7 +106,13 @@ public:
 	// Called by the Master Menu to swap lanes at runtime
 	UFUNCTION(BlueprintCallable, Category = "Traffic Logic")
 	void UpdateDriveSide(bool bDriveLeft);
-	
+
+	// --- DYNAMIC OBSTACLES (The Cow!) ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data | Events")
+	bool bHasDynamicObstacle = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data | Events")
+	float DynamicObstacleDistance = 0.0f;
 protected:
 	virtual void BeginPlay() override;
 

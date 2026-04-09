@@ -57,7 +57,9 @@ public:
 
 	// State tracker for yielding
 	bool bIsPullingOver = false;
-	
+
+	// Tracks when the car spawned to calculate trip duration
+	float SpawnTime = 0.0f;
 protected:
 	virtual void BeginPlay() override;
 

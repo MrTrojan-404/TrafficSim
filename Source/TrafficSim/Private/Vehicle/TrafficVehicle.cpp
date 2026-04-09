@@ -4,6 +4,7 @@
 #include "Vehicle/TrafficVehicle.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SplineComponent.h"
+#include "Controller/TrafficPlayerController.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
 #include "Subsystem/TrafficNetworkSubsystem.h"
@@ -26,6 +27,8 @@ ATrafficVehicle::ATrafficVehicle()
 void ATrafficVehicle::BeginPlay()
 {
     Super::BeginPlay();
+    
+    SpawnTime = GetWorld()->GetTimeSeconds();
     CurrentSpeed = 0.0f;
     TargetSpeed = MaxSpeed;
 
@@ -168,7 +171,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
             DistanceToCarAhead = Gap;
         }
 
-        // ---> FIX 2: The "Emergency Corridor" Hold <---
+        //  The "Emergency Corridor" Hold 
         if (!bIsEmergencyVehicle && OtherCar->bIsEmergencyVehicle)
         {
             // If the siren is up to 2500 units behind us, OR up to 800 units ahead of us
@@ -205,6 +208,30 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
 
         // Only stop if the barrier is ahead AND we are close to it
         if (bIsBlockAhead && DistToBlock < (MinFollowingDistance + 150.0f)) 
+        {
+            TargetSpeed = 0.0f;
+        }
+    }
+    //  THE COW CHECK 
+    if (CurrentSegment->bHasDynamicObstacle)
+    {
+        float CowDist = CurrentSegment->DynamicObstacleDistance;
+        bool bIsCowAhead = false;
+        float DistToCow = 0.0f;
+
+        if (bTravelingForward && DistanceAlongSpline < CowDist)
+        {
+            bIsCowAhead = true;
+            DistToCow = CowDist - DistanceAlongSpline;
+        }
+        else if (!bTravelingForward && DistanceAlongSpline > CowDist)
+        {
+            bIsCowAhead = true;
+            DistToCow = DistanceAlongSpline - CowDist;
+        }
+
+        // Stop for the cow! (Give it a bit more buffer space than a normal car)
+        if (bIsCowAhead && DistToCow < (MinFollowingDistance + 300.0f)) 
         {
             TargetSpeed = 0.0f;
         }
@@ -288,7 +315,7 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
             }
         }
 
-        // ---> THE FIX: Split the Override! <---
+        // Split the Override
         // Sirens ignore red lights, but NO ONE ignores physics (Gridlock/Full Roads)
         if (bIsEmergencyVehicle)
         {
@@ -332,6 +359,13 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
         else
         {
+            // ---> NEW: Report the completed trip before dying! <---
+            if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+            {
+                float TripDuration = GetWorld()->GetTimeSeconds() - SpawnTime;
+                PC->RegisterCompletedTrip(TripDuration);
+            }
+
             Destroy(); // Destination Reached
             return;
         }

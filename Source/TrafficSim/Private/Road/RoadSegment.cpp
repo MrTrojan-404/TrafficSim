@@ -155,28 +155,25 @@ void ARoadSegment::UpdateHeatmap()
 {
 	float CongestionRatio = 0.0f;
 
-	if (bIsBlocked)
-	{
-		CongestionRatio = 1.0f;
-	}
-	else if (MaxCapacity > 0)
-	{
-		CongestionRatio = FMath::Clamp((float)CurrentVehicleCount / (float)MaxCapacity, 0.0f, 1.0f);
-	}
+	if (bIsBlocked) CongestionRatio = 1.0f;
+	else if (MaxCapacity > 0) CongestionRatio = FMath::Clamp((float)CurrentVehicleCount / (float)MaxCapacity, 0.0f, 1.0f);
 
-	// ---> Apply an exponential curve! <---
-	// 0.1 cubed is 0.001 (invisible). 0.5 cubed is 0.125 (subtle). 0.9 cubed is 0.72 (bright!).
 	float VisualIntensityCurve = FMath::Pow(CongestionRatio, 3.0f);
 
-	// Use our new curved ratio for the color blend
+	// ACCESSIBILITY CHECK
+	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+	if (PC && PC->bEnableHeatmapPulse && VisualIntensityCurve > 0.1f)
+	{
+		// Add the sine wave throb ONLY if the toggle is on and there is actual congestion
+		float Throb = ((FMath::Sin(GetWorld()->GetTimeSeconds() * 3.0f) * 0.5f) + 0.5f)*2; // Maps sine wave to 0-1
+		VisualIntensityCurve *= Throb; 
+	}
+
 	FLinearColor CurrentColor = FMath::Lerp(EmptyRoadColor, CongestedColor, VisualIntensityCurve);
 
 	for (UMaterialInstanceDynamic* MID : HeatmapMaterials)
 	{
-		if (MID)
-		{
-			MID->SetVectorParameterValue(TEXT("RoadColor"), CurrentColor);
-		}
+		if (MID) MID->SetVectorParameterValue(TEXT("RoadColor"), CurrentColor);
 	}
 }
 

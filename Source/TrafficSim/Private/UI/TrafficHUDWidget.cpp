@@ -81,6 +81,28 @@ void UTrafficHUDWidget::UpdateStats()
        
 		Txt_AverageCongestion->SetText(FText::FromString(PercentString));
 	}
+	// 3. Trip Analytics
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		if (Txt_CompletedTrips)
+		{
+			Txt_CompletedTrips->SetText(FText::AsNumber(PC->TotalTripsCompleted));
+		}
+
+		if (Txt_AverageTravelTime)
+		{
+			if (PC->TotalTripsCompleted > 0)
+			{
+				float AverageTime = PC->CumulativeTravelTime / PC->TotalTripsCompleted;
+				FString TimeString = FString::Printf(TEXT("%d sec"), FMath::RoundToInt(AverageTime));
+				Txt_AverageTravelTime->SetText(FText::FromString(TimeString));
+			}
+			else
+			{
+				Txt_AverageTravelTime->SetText(FText::FromString(TEXT("0 sec")));
+			}
+		}
+	}
 }
 
 void UTrafficHUDWidget::HandleGameModeChanged(ETrafficGameMode NewMode)

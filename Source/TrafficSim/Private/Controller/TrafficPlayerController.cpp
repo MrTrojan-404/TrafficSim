@@ -8,6 +8,7 @@
 #include "Component/TrafficSpawnerComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Kismet/GameplayStatics.h"
+#include "Road/DynamicObstacle.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
 #include "SaveGame/TrafficSaveGame.h"
@@ -22,6 +23,12 @@ ATrafficPlayerController::ATrafficPlayerController()
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
+}
+
+void ATrafficPlayerController::RegisterCompletedTrip(float TripDuration)
+{
+	TotalTripsCompleted++;
+	CumulativeTravelTime += TripDuration;
 }
 
 void ATrafficPlayerController::BeginPlay()
@@ -42,6 +49,44 @@ void ATrafficPlayerController::BeginPlay()
 		if (DefaultMappingContext)
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+
+	// Start checking for random events every 15 seconds
+	GetWorld()->GetTimerManager().SetTimer(RandomEventTimer, this, &ATrafficPlayerController::TriggerRandomEvent, 15.0f, true);
+}
+
+void ATrafficPlayerController::TriggerRandomEvent()
+{
+	if (!ObstacleClass) return;
+
+	TArray<AActor*> AllRoads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), AllRoads);
+
+	if (AllRoads.Num() > 0)
+	{
+		// 1. Pick a random road
+		int32 RandomIndex = FMath::RandRange(0, AllRoads.Num() - 1);
+		ARoadSegment* ChosenRoad = Cast<ARoadSegment>(AllRoads[RandomIndex]);
+
+		// Don't spawn a cow on a road that is already blocked or too short!
+		if (ChosenRoad && !ChosenRoad->bIsBlocked && !ChosenRoad->bHasDynamicObstacle && ChosenRoad->SplineComponent->GetSplineLength() > 1000.0f)
+		{
+			// 2. Pick a random distance along that road
+			float RoadLength = ChosenRoad->SplineComponent->GetSplineLength();
+			float RandomDistance = FMath::RandRange(500.0f, RoadLength - 500.0f);
+
+			// 3. Spawn the Cow!
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			
+			ADynamicObstacle* NewObstacle = GetWorld()->SpawnActor<ADynamicObstacle>(ObstacleClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+
+			if (NewObstacle)
+			{
+				NewObstacle->StartCrossing(ChosenRoad, RandomDistance);
+				UE_LOG(LogTemp, Warning, TEXT("RANDOM EVENT: A dynamic obstacle has wandered onto road %s!"), *ChosenRoad->GetName());
+			}
 		}
 	}
 }
@@ -355,6 +400,9 @@ void ATrafficPlayerController::ClearCity()
 		}
 	}
 
+	TotalTripsCompleted = 0;
+	CumulativeTravelTime = 0.0f;
+	
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Cleared!"));
 }
 
@@ -381,9 +429,18 @@ void ATrafficPlayerController::ClearTraffic()
 			Road->VehiclesBackward.Empty();
 		}
 	}
+	TotalTripsCompleted = 0;
+	CumulativeTravelTime = 0.0f;
 
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Traffic Cleared!"));
 }
+
+void ATrafficPlayerController::ToggleHeatmapPulse()
+{
+	bEnableHeatmapPulse = !bEnableHeatmapPulse;
+	UE_LOG(LogTemp, Warning, TEXT("Settings: Heatmap Pulse set to %d"), bEnableHeatmapPulse);
+}
+
 void ATrafficPlayerController::ToggleCityDriveSide()
 {
 	bMasterDriveOnLeft = !bMasterDriveOnLeft;

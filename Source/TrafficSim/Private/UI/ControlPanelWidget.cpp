@@ -16,6 +16,8 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_SaveLayout) Btn_SaveLayout->OnClicked.AddDynamic(this, &UControlPanelWidget::OnSaveLayoutClicked);
 	if (Btn_LoadLayout) Btn_LoadLayout->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadLayoutClicked);
 	if (Btn_LoadDefault) Btn_LoadDefault->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadDefaultClicked);
+	if (Btn_TogglePulse) Btn_TogglePulse->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTogglePulseClicked);
+	
 }
 
 void UControlPanelWidget::OnToggleDriveSideClicked()
@@ -90,4 +92,12 @@ void UControlPanelWidget::OnLoadLayoutClicked()
 void UControlPanelWidget::OnLoadDefaultClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer())) PC->LoadDefaultLayout();
+}
+
+void UControlPanelWidget::OnTogglePulseClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->ToggleHeatmapPulse();
+	}
 }

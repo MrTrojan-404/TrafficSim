@@ -106,6 +106,22 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Saving")
 	void LoadDefaultLayout();
+
+	// ---> SIMULATION STATS <---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Control | Stats")
+	int32 TotalTripsCompleted = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Control | Stats")
+	float CumulativeTravelTime = 0.0f;
+
+	void RegisterCompletedTrip(float TripDuration);
+
+	// Accessibility Settings
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Settings | Accessibility")
+	bool bEnableHeatmapPulse = true;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings | Accessibility")
+	void ToggleHeatmapPulse();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -133,6 +149,15 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SecondaryClickAction;
+
+	// RANDOM EVENTS (The Game Director)
+	UPROPERTY(EditDefaultsOnly, Category = "Events")
+	TSubclassOf<class ADynamicObstacle> ObstacleClass;
+
+	FTimerHandle RandomEventTimer;
+
+	UFUNCTION()
+	void TriggerRandomEvent();
 	
 private:
 	void HandleDeleteModeClick();

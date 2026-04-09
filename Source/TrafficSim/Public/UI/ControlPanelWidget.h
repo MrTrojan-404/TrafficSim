@@ -47,7 +47,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_LoadDefault;
-	
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_TogglePulse;
 private:
 	// Button bind functions
 	UFUNCTION() void OnLightsNormal();
@@ -60,4 +62,5 @@ private:
 	UFUNCTION() void OnSaveLayoutClicked();
 	UFUNCTION() void OnLoadLayoutClicked();
 	UFUNCTION() void OnLoadDefaultClicked();
+	UFUNCTION() void OnTogglePulseClicked();
 };
