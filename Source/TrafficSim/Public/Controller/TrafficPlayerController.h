@@ -122,6 +122,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Settings | Accessibility")
 	void ToggleHeatmapPulse();
+
+	// ---> SIMULATION SPEED <---
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Time")
+	void SetSimulationSpeed(float SpeedMultiplier);
+
+	// ---> DISASTER SCENARIOS <---
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
+	void TriggerScenario_ArteryCollapse();
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
+	void TriggerScenario_StadiumEvent();
 	
 protected:
 	virtual void BeginPlay() override;

@@ -151,8 +151,32 @@ void ARoadSegment::BeginPlay()
 	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.5f, true);
 }
 
+void ARoadSegment::SetHighlight(int32 StencilValue)
+{
+	TArray<USplineMeshComponent*> SplineMeshes;
+	GetComponents<USplineMeshComponent>(SplineMeshes);
+
+	for (USplineMeshComponent* Mesh : SplineMeshes)
+	{
+		if (Mesh)
+		{
+			Mesh->SetRenderCustomDepth(StencilValue > 0);
+			Mesh->SetCustomDepthStencilValue(StencilValue);
+		}
+	}
+}
+
 void ARoadSegment::UpdateHeatmap()
 {
+	if (bDisableHeatmap)
+	{
+		for (UMaterialInstanceDynamic* MID : HeatmapMaterials)
+		{
+			if (MID) MID->SetVectorParameterValue(TEXT("RoadColor"), EmptyRoadColor);
+		}
+		return;
+	}
+	
 	float CongestionRatio = 0.0f;
 
 	if (bIsBlocked) CongestionRatio = 1.0f;

@@ -3,6 +3,7 @@
 #include "Vehicle/TrafficVehicle.h"
 #include "Subsystem/TrafficNetworkSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Road/RoadSegment.h"
 
 UTrafficSpawnerComponent::UTrafficSpawnerComponent()
 {
@@ -28,6 +29,108 @@ void UTrafficSpawnerComponent::SetAsSpecificSpawner(AIntersectionNode* Destinati
 
 	GetWorld()->GetTimerManager().SetTimer(SpawnerTimerHandle, this, &UTrafficSpawnerComponent::SpawnVehicleRoutine, SpawnInterval, true);
 	UE_LOG(LogTemp, Warning, TEXT("Component on %s is now a SPECIFIC Spawner aimed at %s!"), *GetOwner()->GetName(), *DestinationNode->GetName());
+}
+
+void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
+{
+    // 1. Are we out of cars? Turn off the timer.
+    if (QueuedCarsToSpawn <= 0)
+    {
+        GetWorld()->GetTimerManager().ClearTimer(SpawnQueueTimer);
+        return;
+    }
+
+    AIntersectionNode* MyNode = Cast<AIntersectionNode>(GetOwner());
+    if (!MyNode || MyNode->OutgoingSegments.Num() == 0) return;
+
+    ARoadSegment* TargetRoad = MyNode->OutgoingSegments[0]; // Pick the exit road
+
+    // ---> CONDITION 1: Is the road already full? <---
+    if (TargetRoad->CurrentVehicleCount >= TargetRoad->MaxCapacity)
+    {
+        return; // Road is full, wait for the next timer tick!
+    }
+
+    // ---> CONDITION 2: Is the Master Light Red? <---
+    if (MyNode->LightState == ELightOverrideState::AllRed)
+    {
+        return; // Light is red, hold the cars!
+    }
+
+    // --- YOUR SPAWN LOGIC GOES HERE ---
+    if (VehicleClassesToSpawn.Num() == 0) return;
+
+    UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
+    if (!Subsystem) return;
+
+    AIntersectionNode* ChosenDestination = nullptr;
+    TArray<ARoadSegment*> FinalPath;
+
+    // 1. Determine destination based on spawner type
+    if (bIsRandomDest)
+    {
+        TArray<AActor*> AllNodes;
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), AllNodes);
+
+        if (AllNodes.Num() > 1)
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                int32 RandomIndex = FMath::RandRange(0, AllNodes.Num() - 1);
+                AIntersectionNode* PotentialDest = Cast<AIntersectionNode>(AllNodes[RandomIndex]);
+
+                if (PotentialDest && PotentialDest != MyNode)
+                {
+                    TArray<ARoadSegment*> TestPath = Subsystem->FindPath(MyNode, PotentialDest);
+                    if (TestPath.Num() > 0)
+                    {
+                        ChosenDestination = PotentialDest;
+                        FinalPath = TestPath;
+                        break; 
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        ChosenDestination = SpecificDestNode;
+        if (ChosenDestination)
+        {
+            FinalPath = Subsystem->FindPath(MyNode, ChosenDestination);
+        }
+    }
+
+    // Failsafe: If no path is found, discard the car to prevent an infinite queue lock
+    if (!ChosenDestination || FinalPath.Num() == 0)
+    {
+        QueuedCarsToSpawn--;
+        return;
+    }
+
+    // 2. Actually spawn the car
+    FVector SpawnLocation = MyNode->GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
+    FRotator SpawnRotation = MyNode->GetActorRotation();
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+
+    int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
+    TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
+
+    if (SelectedVehicleClass)
+    {
+        ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
+
+        if (NewVehicle)
+        {
+            NewVehicle->DebugEndNode = ChosenDestination;
+            NewVehicle->SetRoute(FinalPath);
+        }
+    }
+
+    // 3. Car successfully left the stadium! Remove it from the waiting list.
+    QueuedCarsToSpawn--;
 }
 
 void UTrafficSpawnerComponent::SpawnVehicleRoutine()
@@ -98,15 +201,15 @@ void UTrafficSpawnerComponent::SpawnVehicleRoutine()
 	}
 }
 
-void UTrafficSpawnerComponent::TriggerRushHour(int32 CarCount)
+void UTrafficSpawnerComponent::TriggerRushHour(int32 Amount)
 {
-	if (!bIsActiveSpawner) return;
+	// Add cars to the waiting list instead of spawning them instantly
+	QueuedCarsToSpawn += Amount;
 
-	RushHourCarsRemaining += CarCount;
-
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RushHourTimerHandle))
+	// Start a timer that tries to spawn a car every 0.5 seconds
+	if (!GetWorld()->GetTimerManager().IsTimerActive(SpawnQueueTimer))
 	{
-		GetWorld()->GetTimerManager().SetTimer(RushHourTimerHandle, this, &UTrafficSpawnerComponent::ProcessRushHourSpawn, 0.2f, true);
+		GetWorld()->GetTimerManager().SetTimer(SpawnQueueTimer, this, &UTrafficSpawnerComponent::AttemptSpawnFromQueue, 0.5f, true);
 	}
 }
 

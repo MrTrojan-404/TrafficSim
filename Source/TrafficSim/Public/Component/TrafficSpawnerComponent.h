@@ -30,6 +30,12 @@ public:
 	// Is this component currently pumping out cars?
 	bool bIsActiveSpawner = false;
 
+	int32 QueuedCarsToSpawn = 0;
+	FTimerHandle SpawnQueueTimer;
+
+	UFUNCTION()
+	void AttemptSpawnFromQueue();
+	
 protected:
 	bool bIsRandomDest = true;
 	

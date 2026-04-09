@@ -555,9 +555,83 @@ void ATrafficPlayerController::LoadCityLayout()
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: City Layout Loaded!"));
 }
 
+void ATrafficPlayerController::SetSimulationSpeed(float SpeedMultiplier)
+{
+	// 1.0 is normal speed. 2.0 is double speed. 0.0 is paused!
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), SpeedMultiplier);
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Time Dilation set to %f"), SpeedMultiplier);
+}
+
 void ATrafficPlayerController::LoadDefaultLayout()
 {
 	// Reloading the current level instantly restores the editor-placed layout!
 	FString CurrentLevelName = GetWorld()->GetName();
 	UGameplayStatics::OpenLevel(this, FName(*CurrentLevelName), false);
+}
+
+void ATrafficPlayerController::TriggerScenario_ArteryCollapse()
+{
+	TArray<AActor*> AllRoads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), AllRoads);
+
+	int32 RoadsToBlock = 3; // How many roads to destroy
+	int32 BlockedCount = 0;
+
+	// Shuffle the array to randomize the targets
+	for (int32 i = AllRoads.Num() - 1; i > 0; i--)
+	{
+		int32 j = FMath::RandRange(0, i);
+		AllRoads.Swap(i, j);
+	}
+
+	for (AActor* Actor : AllRoads)
+	{
+		ARoadSegment* Road = Cast<ARoadSegment>(Actor);
+		// Only block active, unblocked roads
+		if (Road && !Road->bIsBlocked)
+		{
+			Road->bIsBlocked = true;
+			Road->bDisableHeatmap = true;
+			Road->BlockedDistance = FMath::RandRange(500.0f, Road->SplineComponent->GetSplineLength() - 500.0f);
+			Road->SetHighlight(250); // 250 - pink
+          
+			BlockedCount++;
+			if (BlockedCount >= RoadsToBlock) break;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("SCENARIO: Artery Collapse triggered! %d roads blocked."), BlockedCount);
+}
+
+void ATrafficPlayerController::TriggerScenario_StadiumEvent()
+{
+	TArray<AActor*> Intersections;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), Intersections);
+
+	if (Intersections.Num() > 1) // Ensure we have at least 2 nodes!
+	{
+		int32 RandomIndex = FMath::RandRange(0, Intersections.Num() - 1);
+		AIntersectionNode* StadiumNode = Cast<AIntersectionNode>(Intersections[RandomIndex]);
+
+		if (StadiumNode && StadiumNode->SpawnerComponent)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SCENARIO: Stadium Event at Node %s!"), *StadiumNode->GetName());
+
+			// 1. Pick a completely different node to act as the "Escape Route" destination
+			AIntersectionNode* EscapeNode = nullptr;
+			while (!EscapeNode || EscapeNode == StadiumNode)
+			{
+				EscapeNode = Cast<AIntersectionNode>(Intersections[FMath::RandRange(0, Intersections.Num() - 1)]);
+			}
+
+			// 2. Tell the Spawner where to send the crowd
+			StadiumNode->SpawnerComponent->SetAsSpecificSpawner(EscapeNode);
+
+			// 3. Trigger the wave (I recommend 20-30 cars so they don't spawn inside each other)
+			StadiumNode->SpawnerComponent->TriggerRushHour(25);
+          
+			// 4. Highlight the node so you know where to look!
+			StadiumNode->SetHighlight(252); 
+		}
+	}
 }

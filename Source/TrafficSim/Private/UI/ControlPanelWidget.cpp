@@ -17,6 +17,11 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_LoadLayout) Btn_LoadLayout->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadLayoutClicked);
 	if (Btn_LoadDefault) Btn_LoadDefault->OnClicked.AddDynamic(this, &UControlPanelWidget::OnLoadDefaultClicked);
 	if (Btn_TogglePulse) Btn_TogglePulse->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTogglePulseClicked);
+	if (Btn_TimeDil1) Btn_TimeDil1->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTimeDil1Clicked);
+	if (Btn_TimeDil2) Btn_TimeDil2->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTimeDil2Clicked);
+	if (Btn_TimeDil5) Btn_TimeDil5->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTimeDil5Clicked);
+	if (Btn_ScenarioArtery) Btn_ScenarioArtery->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioArteryClicked);
+	if (Btn_ScenarioStadium) Btn_ScenarioStadium->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioStadiumClicked);
 	
 }
 
@@ -99,5 +104,48 @@ void UControlPanelWidget::OnTogglePulseClicked()
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		PC->ToggleHeatmapPulse();
+	}
+}
+
+void UControlPanelWidget::OnTimeDil1Clicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetSimulationSpeed(1);
+	}
+}
+
+void UControlPanelWidget::OnTimeDil2Clicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetSimulationSpeed(2);
+	}
+}
+
+void UControlPanelWidget::OnTimeDil5Clicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetSimulationSpeed(5);
+	}
+}
+
+void UControlPanelWidget::OnScenarioArteryClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->TriggerScenario_ArteryCollapse();
+		// Optional: Close the menu automatically so you can watch the chaos!
+		OnCloseClicked(); 
+	}
+}
+
+void UControlPanelWidget::OnScenarioStadiumClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->TriggerScenario_StadiumEvent();
+		OnCloseClicked(); 
 	}
 }

@@ -113,13 +113,22 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data | Events")
 	float DynamicObstacleDistance = 0.0f;
+
+	UFUNCTION()
+	void UpdateHeatmap();
+
+	// Toggles the Custom Depth rendering for the roadblock highlight
+	UFUNCTION(BlueprintCallable, Category = "Visuals")
+	void SetHighlight(int32 StencilValue);
+
+	// Used by scenarios to mute the heatmap so the Stencil outline stands out
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals | Heatmap")
+	bool bDisableHeatmap = false;
+	
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	FTimerHandle HeatmapTimerHandle;
-
-	UFUNCTION()
-	void UpdateHeatmap();
 	
 };

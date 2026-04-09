@@ -50,6 +50,22 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_TogglePulse;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_TimeDil1;
+	
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_TimeDil2;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_TimeDil5;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ScenarioArtery;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ScenarioStadium;
+	
 private:
 	// Button bind functions
 	UFUNCTION() void OnLightsNormal();
@@ -63,4 +79,10 @@ private:
 	UFUNCTION() void OnLoadLayoutClicked();
 	UFUNCTION() void OnLoadDefaultClicked();
 	UFUNCTION() void OnTogglePulseClicked();
+	UFUNCTION() void OnTimeDil1Clicked();
+	UFUNCTION() void OnTimeDil2Clicked();
+	UFUNCTION() void OnTimeDil5Clicked();
+	UFUNCTION() void OnScenarioArteryClicked();
+	UFUNCTION() void OnScenarioStadiumClicked();
+	
 };
