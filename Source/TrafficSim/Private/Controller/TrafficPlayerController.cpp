@@ -711,3 +711,78 @@ void ATrafficPlayerController::ClearAllRoadblocks()
 
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Repaired %d roadblocks! Traffic resuming."), RepairedCount);
 }
+
+void ATrafficPlayerController::GenerateProceduralCity(int32 GridSize)
+{
+    // 1. Wipe the slate clean before generating!
+    ClearCity();
+
+    // 2. Failsafe: Don't let the user generate a city of size 0 or crash the engine with size 1000!
+    GridSize = FMath::Clamp(GridSize, 2, 20); 
+
+    float BaseSpacing = 6000.0f; 
+    
+    TArray<AIntersectionNode*> GridNodes;
+    GridNodes.Init(nullptr, GridSize * GridSize);
+
+    // 2. SPAWN THE NODES
+    for (int32 x = 0; x < GridSize; x++)
+    {
+        for (int32 y = 0; y < GridSize; y++)
+        {
+            float OffsetX = FMath::RandRange(-800.0f, 800.0f);
+            float OffsetY = FMath::RandRange(-800.0f, 800.0f);
+            
+            FVector SpawnLoc((x * BaseSpacing) + OffsetX, (y * BaseSpacing) + OffsetY, 10.0f);
+            
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+            AIntersectionNode* NewNode = GetWorld()->SpawnActor<AIntersectionNode>(IntersectionClassToSpawn, SpawnLoc, FRotator::ZeroRotator, SpawnParams);
+            
+            GridNodes[x + (y * GridSize)] = NewNode;
+        }
+    }
+
+    // 3. CONNECT THE ROADS
+    for (int32 x = 0; x < GridSize; x++)
+    {
+        for (int32 y = 0; y < GridSize; y++)
+        {
+            AIntersectionNode* CurrentNode = GridNodes[x + (y * GridSize)];
+            if (!CurrentNode) continue;
+
+            // Connect RIGHT
+            if (x < GridSize - 1 && FMath::FRand() < 0.85f)
+            {
+                AIntersectionNode* RightNode = GridNodes[(x + 1) + (y * GridSize)];
+                SpawnProceduralRoad(CurrentNode, RightNode);
+            }
+
+            // Connect UP
+            if (y < GridSize - 1 && FMath::FRand() < 0.85f)
+            {
+                AIntersectionNode* UpNode = GridNodes[x + ((y + 1) * GridSize)];
+                SpawnProceduralRoad(CurrentNode, UpNode);
+            }
+        }
+    }
+    
+    UE_LOG(LogTemp, Warning, TEXT("PROCEDURAL GENERATION COMPLETE: %dx%d City generated."), GridSize, GridSize);
+}
+
+void ATrafficPlayerController::SpawnProceduralRoad(AIntersectionNode* Start, AIntersectionNode* End)
+{
+    if (!Start || !End || !RoadClassToSpawn) return;
+
+    FTransform SpawnTransform(FRotator::ZeroRotator, FVector::ZeroVector);
+    
+    // We use Deferred Spawning so we can run SetupConnection BEFORE the road runs its Construction Script
+    ARoadSegment* NewRoad = GetWorld()->SpawnActorDeferred<ARoadSegment>(RoadClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+    
+    if (NewRoad)
+    {
+        NewRoad->SetupConnection(Start, End);
+        NewRoad->FinishSpawning(SpawnTransform);
+    }
+}

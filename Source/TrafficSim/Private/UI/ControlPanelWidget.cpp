@@ -1,5 +1,6 @@
 #include "UI/ControlPanelWidget.h"
 #include "Components/Button.h"
+#include "Components/SpinBox.h"
 #include "Controller/TrafficPlayerController.h"
 
 void UControlPanelWidget::NativeConstruct()
@@ -24,6 +25,7 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_ScenarioStadium) Btn_ScenarioStadium->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioStadiumClicked);
 	if (Btn_ExportCSV) Btn_ExportCSV->OnClicked.AddDynamic(this, &UControlPanelWidget::OnExportCSVClicked);
 	if (Btn_RepairRoads) Btn_RepairRoads->OnClicked.AddDynamic(this, &UControlPanelWidget::OnRepairRoadsClicked);
+	if (Btn_GenerateCity) Btn_GenerateCity->OnClicked.AddDynamic(this, &UControlPanelWidget::OnGenerateCityClicked);
 	
 }
 
@@ -164,5 +166,17 @@ void UControlPanelWidget::OnRepairRoadsClicked()
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		PC->ClearAllRoadblocks();
+	}
+}
+
+void UControlPanelWidget::OnGenerateCityClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		// Default to a 4x4 city if the Spin Box isn't hooked up properly in Blueprints
+		int32 Size = Spin_CitySize ? (int32)Spin_CitySize->GetValue() : 4; 
+        
+		PC->GenerateProceduralCity(Size);
+		OnCloseClicked(); // Close the menu so the user can see the city spawn!
 	}
 }

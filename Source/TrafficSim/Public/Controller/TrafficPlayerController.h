@@ -140,7 +140,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
 	void ClearAllRoadblocks();
-	
+
+	//PROCEDURAL GENERATION
+	UFUNCTION(BlueprintCallable, Category = "Building | Procedural")
+	void GenerateProceduralCity(int32 GridSize);
+
+	// Helper function to handle the deferred spawning logic for algorithmic roads
+	void SpawnProceduralRoad(AIntersectionNode* Start, AIntersectionNode* End);
 protected:
 	virtual void BeginPlay() override;
 

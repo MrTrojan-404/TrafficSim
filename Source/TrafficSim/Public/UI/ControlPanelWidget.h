@@ -71,6 +71,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_RepairRoads;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_GenerateCity;
+
+	UPROPERTY(meta = (BindWidget))
+	class USpinBox* Spin_CitySize;
 	
 private:
 	// Button bind functions
@@ -92,5 +98,6 @@ private:
 	UFUNCTION() void OnScenarioStadiumClicked();
 	UFUNCTION() void OnExportCSVClicked();
 	UFUNCTION() void OnRepairRoadsClicked();
+	UFUNCTION() void OnGenerateCityClicked();
 	
 };
