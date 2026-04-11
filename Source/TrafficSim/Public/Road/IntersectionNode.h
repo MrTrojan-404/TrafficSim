@@ -82,6 +82,13 @@ public:
 	// Unique ID used for Save/Load serialization
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Graph")
 	FGuid UniqueID;
+
+	// PASS-THROUGH NODE SETTINGS
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic AI | Lights")
+	bool bHasTrafficLights = true;
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Lights")
+	void ToggleTrafficLights();
 	
 protected:
 	virtual void BeginPlay() override;

@@ -281,7 +281,8 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         bool bGridlockStop = false;
 
         // Rule A: The Red Light Check
-        if (ApproachingNode)
+        // Only check the light if the intersection actually has them
+        if (ApproachingNode && ApproachingNode->bHasTrafficLights) 
         {
             if (ApproachingNode->LightState == ELightOverrideState::AllRed)
             {

@@ -52,6 +52,33 @@ void AIntersectionNode::BeginPlay()
 	GetWorld()->GetTimerManager().SetTimer(LightTimerHandle, this, &AIntersectionNode::CycleTrafficLight, 5.0f, true);
 }
 
+void AIntersectionNode::ToggleTrafficLights()
+{
+	bHasTrafficLights = !bHasTrafficLights;
+
+	if (TrafficLightVisual)
+	{
+		TrafficLightVisual->SetVisibility(bHasTrafficLights);
+	}
+
+	// If we just turned the lights OFF, force the visual meshes to look Green/Black 
+	// so cars don't look like they are running a red light!
+	if (!bHasTrafficLights)
+	{
+		for (ARoadSegment* Segment : IncomingSegments)
+		{
+			if (Segment) Segment->SetIntersectionLightColor(this, FLinearColor(0.0f, 0.0f, 0.0f)); 
+		}
+	}
+	else
+	{
+		// If we turned them back ON, restore the normal light colors
+		ApplyLightColors(); 
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Intersection %s lights toggled to %d"), *GetName(), bHasTrafficLights);
+}
+
 // Route the click directly into your existing logic
 void AIntersectionNode::OnIntersectionClicked(AActor* TouchedActor, FKey ButtonPressed)
 {
@@ -89,6 +116,11 @@ void AIntersectionNode::OnIntersectionClicked(AActor* TouchedActor, FKey ButtonP
 				Spawner->TriggerRushHour(10); 
 			}
 		}
+	}
+	// TOGGLE TRAFFIC LIGHTS (Ctrl + Click)
+	else if (PC && (PC->IsInputKeyDown(EKeys::LeftAlt) || PC->IsInputKeyDown(EKeys::RightAlt)))
+	{
+		ToggleTrafficLights();
 	}
 	else
 	{
