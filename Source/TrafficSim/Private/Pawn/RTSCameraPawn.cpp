@@ -3,6 +3,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Controller/TrafficPlayerController.h"
 
 ARTSCameraPawn::ARTSCameraPawn()
 {
@@ -129,6 +130,10 @@ void ARTSCameraPawn::OnRotate(const FInputActionValue& Value)
         {
             return; 
         }
+    }
+    if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetController()))
+    {
+        PC->AdvanceTutorial(0);
     }
 
     // 1. Grab both X and Y mouse movements

@@ -151,6 +151,26 @@ public:
 	// TRAFFIC POPULATION
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Procedural")
 	void PopulateCityWithTraffic();
+
+	//TUTORIAL SYSTEM
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tutorial UI")
+	TSubclassOf<class UTutorialWidget> TutorialWidgetClass;
+
+	UPROPERTY()
+	UTutorialWidget* ActiveTutorialWidget;
+
+	int32 CurrentTutorialStep = 0;
+	TArray<FString> TutorialObjectives;
+
+	UFUNCTION(BlueprintCallable, Category = "Tutorial")
+	void StartTutorial();
+
+	UFUNCTION(BlueprintCallable, Category = "Tutorial")
+	void AdvanceTutorial(int32 CompletedStepIndex);
+
+	//TUTORIAL TIMER
+	FTimerHandle TutorialTimerHandle;
+	void HideTutorialWidget();
 	
 protected:
 	virtual void BeginPlay() override;

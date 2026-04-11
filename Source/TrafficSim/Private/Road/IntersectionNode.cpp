@@ -8,6 +8,7 @@
 #include "Component/TrafficSpawnerComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
+#include "Controller/TrafficPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
 #include "Subsystem/TrafficNetworkSubsystem.h"
@@ -82,9 +83,9 @@ void AIntersectionNode::ToggleTrafficLights()
 // Route the click directly into your existing logic
 void AIntersectionNode::OnIntersectionClicked(AActor* TouchedActor, FKey ButtonPressed)
 {
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
     
-	if (PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift)))
+	if (PlayerController && (PlayerController->IsInputKeyDown(EKeys::LeftShift) || PlayerController->IsInputKeyDown(EKeys::RightShift)))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Rush Hour Triggered on this Island!"));
        
@@ -116,15 +117,27 @@ void AIntersectionNode::OnIntersectionClicked(AActor* TouchedActor, FKey ButtonP
 				Spawner->TriggerRushHour(10); 
 			}
 		}
+		if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+		{
+			PC->AdvanceTutorial(6);
+		}
 	}
 	// TOGGLE TRAFFIC LIGHTS (Ctrl + Click)
-	else if (PC && (PC->IsInputKeyDown(EKeys::LeftAlt) || PC->IsInputKeyDown(EKeys::RightAlt)))
+	else if (PlayerController && (PlayerController->IsInputKeyDown(EKeys::LeftAlt) || PlayerController->IsInputKeyDown(EKeys::RightAlt)))
 	{
 		ToggleTrafficLights();
+		if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+		{
+			PC->AdvanceTutorial(7);
+		}
 	}
 	else
 	{
 		PlayerForceLightChange();
+		if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+		{
+			PC->AdvanceTutorial(8);
+		}
 	}
 }
 

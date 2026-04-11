@@ -14,6 +14,7 @@
 #include "SaveGame/TrafficSaveGame.h"
 #include "UI/ControlPanelWidget.h"
 #include "UI/SpawnerOverlayWidget.h"
+#include "UI/Tutorial/TutorialWidget.h"
 #include "Vehicle/TrafficSpawner.h"
 #include "Vehicle/TrafficVehicle.h"
 
@@ -135,6 +136,7 @@ void ATrafficPlayerController::ToggleMouseCursor()
 	{
 		SetInputMode(FInputModeGameOnly());
 	}
+	AdvanceTutorial(1);
 }
 
 void ATrafficPlayerController::ToggleGameMode()
@@ -161,6 +163,7 @@ void ATrafficPlayerController::ToggleGameMode()
 	}
 
 	OnGameModeChangedDelegate.Broadcast(CurrentGameMode);
+	AdvanceTutorial(2);
 }
 
 void ATrafficPlayerController::StartSelectingDestination(AIntersectionNode* SpawnerNode)
@@ -253,7 +256,8 @@ void ATrafficPlayerController::OnSecondaryClick()
 				ActiveSpawnerWidget->SetTargetNode(ClickedNode);
 				ActiveSpawnerWidget->AddToViewport();
 				
-				ClickedNode->SetHighlight(252); 
+				ClickedNode->SetHighlight(252);
+				AdvanceTutorial(5);
 			}
 		}
 	}
@@ -605,7 +609,8 @@ void ATrafficPlayerController::TriggerScenario_ArteryCollapse()
 			if (BlockedCount >= RoadsToBlock) break;
 		}
 	}
-
+	AdvanceTutorial(10);
+	
 	UE_LOG(LogTemp, Warning, TEXT("SCENARIO: Artery Collapse triggered! %d roads blocked."), BlockedCount);
 }
 
@@ -722,7 +727,8 @@ void ATrafficPlayerController::ClearAllRoadblocks()
 			}
 		}
 	}
-
+	AdvanceTutorial(11);
+	
 	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Repaired %d roadblocks and canceled active surges!"), RepairedCount);
 }
 
@@ -781,7 +787,7 @@ void ATrafficPlayerController::GenerateProceduralCity(int32 GridSize)
             }
         }
     }
-    
+	AdvanceTutorial(3);    
     UE_LOG(LogTemp, Warning, TEXT("PROCEDURAL GENERATION COMPLETE: %dx%d City generated."), GridSize, GridSize);
 }
 
@@ -836,6 +842,74 @@ void ATrafficPlayerController::PopulateCityWithTraffic()
 			if (ActivatedCount >= SpawnersToActivate) break;
 		}
 	}
-
+	AdvanceTutorial(4);
 	UE_LOG(LogTemp, Warning, TEXT("PROCEDURAL TRAFFIC: Activated %d random spawners across the city!"), ActivatedCount);
+}
+
+void ATrafficPlayerController::StartTutorial()
+{
+	// 1. Write the script
+	TutorialObjectives = {
+		TEXT("Welcome to the Traffic Analytics Tool. Hold Middle-Mouse or Right-Click to orbit the camera."),
+		TEXT("Press [TAB] to lock the cursor for seamless Drone Free-Look mode. Press it again to unlock."),
+		TEXT("Press [B] to cycle between Simulate, Build, and Delete modes. Return to Simulate Mode."),
+		TEXT("Press [M] to open the Control Panel, set a grid size, and click 'Generate City'."),
+		TEXT("The infrastructure is ready. Open the panel and click 'Populate Traffic'."),
+		TEXT("Right-click any intersection to open its UI and set a specific traffic destination."),
+		TEXT("Hold [SHIFT] and Left-Click any intersection to trigger a localized Rush Hour surge."),
+		TEXT("Hold [ALT] and Left-Click an intersection to disable its lights, creating a bypass curve."),
+		TEXT("Left-Click any intersection to manually cycle its traffic light."),
+		TEXT("Left-Click any road to drop a manual roadblock. Click it again to clear it."),
+		TEXT("Let's test grid resilience. Open the panel and click 'Simulate Road Closures'."),
+		TEXT("Notice the heatmap reacting to the gridlock. Click 'Repair Infrastructure' to clear it.")
+	 };
+
+	CurrentTutorialStep = 0;
+
+	// 2. Spawn the Subtitle UI
+	if (TutorialWidgetClass && !ActiveTutorialWidget)
+	{
+		ActiveTutorialWidget = CreateWidget<UTutorialWidget>(this, TutorialWidgetClass);
+		if (ActiveTutorialWidget)
+		{
+			ActiveTutorialWidget->AddToViewport(0); // Z-order 0 keeps it behind your Control Panel
+			ActiveTutorialWidget->UpdateSubtitle(TutorialObjectives[0]);
+		}
+	}
+}
+
+void ATrafficPlayerController::AdvanceTutorial(int32 CompletedStepIndex)
+{
+	// Only advance if the player completed the EXACT step we are currently waiting for
+	if (CurrentTutorialStep == CompletedStepIndex)
+	{
+		CurrentTutorialStep++;
+
+		if (CurrentTutorialStep < TutorialObjectives.Num())
+		{
+			if (ActiveTutorialWidget)
+			{
+				ActiveTutorialWidget->UpdateSubtitle(TutorialObjectives[CurrentTutorialStep]);
+			}
+		}
+		else
+		{
+			// Tutorial Complete
+			if (ActiveTutorialWidget)
+			{
+				ActiveTutorialWidget->UpdateSubtitle(TEXT("Tutorial Complete. Free Sandbox Mode Activated."));
+                
+				// Wait 5 seconds, then run the HideTutorialWidget function
+				GetWorld()->GetTimerManager().SetTimer(TutorialTimerHandle, this, &ATrafficPlayerController::HideTutorialWidget, 5.0f, false);
+			}
+		}
+	}
+}
+void ATrafficPlayerController::HideTutorialWidget()
+{
+	if (ActiveTutorialWidget)
+	{
+		ActiveTutorialWidget->RemoveFromParent(); // Removes it from the screen
+		ActiveTutorialWidget = nullptr;           // Clears the memory pointer
+	}
 }

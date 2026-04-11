@@ -209,6 +209,7 @@ void ARoadSegment::OnRoadClicked(AActor* TouchedActor, FKey ButtonPressed)
 	if (PC && PC->CurrentGameMode == ETrafficGameMode::Simulate)
 	{
 		ToggleRoadblock();
+		PC->AdvanceTutorial(9);
 	}
 }
 
