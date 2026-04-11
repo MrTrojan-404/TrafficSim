@@ -47,7 +47,7 @@ For the pre-packaged presentation build, we have automated the server and client
 2. Double-click `Launch_Pitch.bat`. 
    *(This will silently initialize the Flask server in the background and launch the Unreal Engine simulation).*
 3. Inside the simulation UI, click **Launch Dashboard** to open the Command Center at `http://localhost:5000`.
-4. After closing the simulation, check the project directory for your timestamped `TrafficSim_log_[DATE].csv` file.
+4. After closing the simulation, check the project directory for your timestamped log files.
 
 ---
 
