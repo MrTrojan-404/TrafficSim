@@ -9,7 +9,7 @@ latest_data = {"active_cars": 0, "roadblocks": 0, "congestion": 0.0, "average_ti
 
 # Generate a unique filename every time the server starts
 run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-CSV_FILENAME = f"urbanflow_log_{run_timestamp}.csv"
+CSV_FILENAME = f"trafficsim_log_{run_timestamp}.csv"
 
 # 1. Create the CSV file and write headers
 if not os.path.exists(CSV_FILENAME):
@@ -52,7 +52,7 @@ def index():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>UrbanFlow Live Telemetry</title>
+        <title>TrafficSim Live Telemetry</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
             body { 
@@ -86,7 +86,7 @@ def index():
         </style>
     </head>
     <body>
-        <h2>URBANFLOW COMMAND CENTER</h2>
+        <h2>TRAFFICSIM COMMAND CENTER</h2>
         
         <div class="dashboard-grid">
             <div class="chart-card"><canvas id="carsChart"></canvas></div>
