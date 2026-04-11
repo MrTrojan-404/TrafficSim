@@ -124,6 +124,12 @@ public:
 	// Used by scenarios to mute the heatmap so the Stencil outline stands out
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals | Heatmap")
 	bool bDisableHeatmap = false;
+
+	UFUNCTION()
+	void OnHoverBegin(AActor* TouchedActor);
+
+	UFUNCTION()
+	void OnHoverEnd(AActor* TouchedActor);
 	
 protected:
 	virtual void BeginPlay() override;

@@ -129,7 +129,10 @@ void ARoadSegment::BeginPlay()
 	// Bind to the entire Actor
 	OnClicked.AddDynamic(this, &ARoadSegment::OnRoadClicked);
 
-	// ---> NEW HEATMAP SETUP <---
+	OnBeginCursorOver.AddDynamic(this, &ARoadSegment::OnHoverBegin);
+	OnEndCursorOver.AddDynamic(this, &ARoadSegment::OnHoverEnd);
+	
+	// HEATMAP SETUP 
 	// 1. Find all the spline meshes we generated in the Construction Script
 	TArray<USplineMeshComponent*> SplineMeshes;
 	GetComponents<USplineMeshComponent>(SplineMeshes);
@@ -163,6 +166,34 @@ void ARoadSegment::SetHighlight(int32 StencilValue)
 			Mesh->SetRenderCustomDepth(StencilValue > 0);
 			Mesh->SetCustomDepthStencilValue(StencilValue);
 		}
+	}
+}
+
+void ARoadSegment::OnHoverBegin(AActor* TouchedActor)
+{
+	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+    
+	if (PC && PC->CurrentGameMode == ETrafficGameMode::Delete)
+	{
+		SetHighlight(250); // Red for Delete Mode
+	}
+	else if (!bIsBlocked)
+	{
+		SetHighlight(253); // Standard White/Blue hover for other modes
+	}
+}
+
+void ARoadSegment::OnHoverEnd(AActor* TouchedActor)
+{
+	// If the road has a roadblock on it, restore the pink highlight!
+	if (bIsBlocked)
+	{
+		SetHighlight(250); 
+	}
+	else
+	{
+		// Otherwise, turn the highlight off completely
+		SetHighlight(0);
 	}
 }
 

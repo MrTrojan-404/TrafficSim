@@ -29,6 +29,8 @@ class TRAFFICSIM_API ATrafficPlayerController : public APlayerController
 public:
 	ATrafficPlayerController();
 
+	virtual void Tick(float DeltaSeconds) override;
+	
 	// The current state of the game
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game State")
 	ETrafficGameMode CurrentGameMode = ETrafficGameMode::Simulate;
@@ -184,6 +186,13 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Settings")
 	void SetTimeOfDay(float TimeValue); // 0.0 to 1.0
+
+	// GHOST PREVIEW
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Control | Settings")
+	UStaticMesh* IntersectionGhostMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Control | Settings")
+	UMaterialInterface* GhostMaterial;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -220,7 +229,9 @@ protected:
 
 	UFUNCTION()
 	void TriggerRandomEvent();
-	
+
+	UPROPERTY()
+	AStaticMeshActor* GhostPreviewActor;
 private:
 	void HandleDeleteModeClick();
 	void ToggleMouseCursor();

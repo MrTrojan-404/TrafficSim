@@ -178,10 +178,17 @@ void AIntersectionNode::ApplyStencil(int32 StencilValue)
 
 void AIntersectionNode::OnHoverBegin(AActor* TouchedActor)
 {
-	// Only apply the hover color (e.g., 253 for White/Purple) if it isn't already highlighted!
 	if (PermanentStencil == 0)
 	{
-		ApplyStencil(253); 
+		ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+		if (PC && PC->CurrentGameMode == ETrafficGameMode::Delete)
+		{
+			ApplyStencil(250); // Red for Delete Mode
+		}
+		else
+		{
+			ApplyStencil(253); // for Normal Hover
+		}
 	}
 }
 

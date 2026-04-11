@@ -19,13 +19,38 @@ void USpawnerOverlayWidget::NativeConstruct()
 
 void USpawnerOverlayWidget::CloseUI()
 {
-	if (TargetNode)
+	// 1. Sever the memory link in the Player Controller FIRST
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
-		TargetNode->SetHighlight(0);
+		if (PC->ActiveSpawnerWidget == this)
+		{
+			PC->ActiveSpawnerWidget = nullptr;
+		}
 	}
+
+	// 2. Restore the correct highlight based on Priority!
+	if (TargetNode && TargetNode->SpawnerComponent)
+	{
+		// PRIORITY 1: Is there an active Rush Hour surge?
+		if (TargetNode->SpawnerComponent->QueuedCarsToSpawn > 0)
+		{
+			TargetNode->SetHighlight(252); 
+		}
+		// PRIORITY 2: Is it a normal, active spawner?
+		else if (TargetNode->SpawnerComponent->bIsActiveSpawner)
+		{
+			TargetNode->SetHighlight(251); 
+		}
+		// PRIORITY 3: It's just a normal intersection
+		else
+		{
+			TargetNode->SetHighlight(0); 
+		}
+	}
+    
+	// 3. Finally, remove from screen
 	RemoveFromParent();
 }
-
 void USpawnerOverlayWidget::OnRandomClicked()
 {
 	if (TargetNode && TargetNode->SpawnerComponent)
@@ -39,15 +64,16 @@ void USpawnerOverlayWidget::OnSpecificClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
-		// Tell the controller to wait for the next click!
 		PC->StartSelectingDestination(TargetNode);
+       
+		if (PC->ActiveSpawnerWidget == this)
+		{
+			PC->ActiveSpawnerWidget = nullptr;
+		}
 	}
-	
-	// We call RemoveFromParent() directly instead of CloseUI() 
-	// because we want the Stencil highlight to STAY ON while they pick the destination!
+    
 	RemoveFromParent(); 
 }
-
 void USpawnerOverlayWidget::OnCloseClicked()
 {
 	CloseUI();

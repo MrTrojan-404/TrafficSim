@@ -7,6 +7,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Component/TrafficSpawnerComponent.h"
 #include "Engine/DirectionalLight.h"
+#include "Engine/StaticMeshActor.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Kismet/GameplayStatics.h"
 #include "Pawn/RTSCameraPawn.h"
@@ -32,6 +33,41 @@ void ATrafficPlayerController::RegisterCompletedTrip(float TripDuration)
 {
 	TotalTripsCompleted++;
 	CumulativeTravelTime += TripDuration;
+}
+
+void ATrafficPlayerController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// Only show and move the ghost if we are in Build Mode AND looking at the ground
+	if (CurrentGameMode == ETrafficGameMode::Build && GhostPreviewActor)
+	{
+		FHitResult HitResult;
+		if (GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+		{
+			if (HitResult.GetActor() && HitResult.GetActor()->ActorHasTag("Ground"))
+			{
+				GhostPreviewActor->SetActorHiddenInGame(false);
+
+				// Re-use your exact grid-snapping math!
+				FVector GridLoc = HitResult.ImpactPoint;
+				GridLoc.X = FMath::RoundToFloat(GridLoc.X / 500.0f) * 500.0f;
+				GridLoc.Y = FMath::RoundToFloat(GridLoc.Y / 500.0f) * 500.0f;
+				GridLoc.Z += 10.0f; 
+
+				GhostPreviewActor->SetActorLocation(GridLoc);
+			}
+			else
+			{
+				GhostPreviewActor->SetActorHiddenInGame(true);
+			}
+		}
+	}
+	else if (GhostPreviewActor && !GhostPreviewActor->IsHidden())
+	{
+		// Hide it if we leave Build mode
+		GhostPreviewActor->SetActorHiddenInGame(true);
+	}
 }
 
 void ATrafficPlayerController::BeginPlay()
@@ -79,7 +115,21 @@ void ATrafficPlayerController::BeginPlay()
 	{
 		DroneCam->SetPanSpeed(SaveSettings->SavedPanSpeed);
 	}
-	
+	// Spawn the Ghost Actor
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	GhostPreviewActor = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+    
+	if (GhostPreviewActor && IntersectionGhostMesh)
+	{
+		GhostPreviewActor->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
+		
+		GhostPreviewActor->GetStaticMeshComponent()->SetStaticMesh(IntersectionGhostMesh);
+		if (GhostMaterial) GhostPreviewActor->GetStaticMeshComponent()->SetMaterial(0, GhostMaterial);
+        
+		GhostPreviewActor->GetStaticMeshComponent()->SetCollisionProfileName(TEXT("NoCollision"));
+		GhostPreviewActor->SetActorHiddenInGame(true); // Hide it until we need it
+	}
 	// Start checking for random events every 15 seconds
 	GetWorld()->GetTimerManager().SetTimer(RandomEventTimer, this, &ATrafficPlayerController::TriggerRandomEvent, 15.0f, true);
 }
@@ -282,10 +332,23 @@ void ATrafficPlayerController::OnPrimaryClick()
 					{
 						PendingSpawnerNode->SpawnerComponent->SetAsSpecificSpawner(ClickedNode);
 					}
-					PendingSpawnerNode->SetHighlight(0);
+                
+					// ---> THE FIX: Check priority before setting the highlight! <---
+					if (PendingSpawnerNode->SpawnerComponent && PendingSpawnerNode->SpawnerComponent->QueuedCarsToSpawn > 0)
+					{
+						PendingSpawnerNode->SetHighlight(252);
+					}
+					else if (PendingSpawnerNode->SpawnerComponent && PendingSpawnerNode->SpawnerComponent->bIsActiveSpawner)
+					{
+						PendingSpawnerNode->SetHighlight(251); 
+					}
+					else
+					{
+						PendingSpawnerNode->SetHighlight(0);
+					}
+                
 					PendingSpawnerNode = nullptr;
 				}
-				return;
 			}
 		}
 	}
