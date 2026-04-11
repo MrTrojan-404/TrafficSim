@@ -35,6 +35,10 @@ public:
 
 	UFUNCTION()
 	void AttemptSpawnFromQueue();
+
+	// Cancel the queue
+	UFUNCTION(BlueprintCallable, Category = "Traffic AI | Spawner")
+	void CancelRushHour();
 	
 protected:
 	bool bIsRandomDest = true;

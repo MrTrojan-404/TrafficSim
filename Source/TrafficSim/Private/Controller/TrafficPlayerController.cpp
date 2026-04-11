@@ -685,9 +685,9 @@ void ATrafficPlayerController::ExportAnalyticsToCSV()
 
 void ATrafficPlayerController::ClearAllRoadblocks()
 {
+	// 1. REPAIR ROADS
 	TArray<AActor*> Roads;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
-    
 	int32 RepairedCount = 0;
 
 	for (AActor* A : Roads)
@@ -698,18 +698,32 @@ void ATrafficPlayerController::ClearAllRoadblocks()
 			Road->bIsBlocked = false;
 			Road->bDisableHeatmap = false;
 			Road->SetHighlight(0);
-          
-			if (Road->RoadblockVisual) 
-			{
-				Road->RoadblockVisual->SetVisibility(false);
-			}
-          
-			Road->UpdateHeatmap(); // Force the material to recalculate instantly
+			if (Road->RoadblockVisual) Road->RoadblockVisual->SetVisibility(false);
+			Road->UpdateHeatmap(); 
 			RepairedCount++;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Repaired %d roadblocks! Traffic resuming."), RepairedCount);
+	// 2.NEW: CANCEL SURGES & CLEAR HIGHLIGHTS
+	TArray<AActor*> Nodes;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), Nodes);
+	for (AActor* A : Nodes)
+	{
+		AIntersectionNode* Node = Cast<AIntersectionNode>(A);
+		if (Node)
+		{
+			// Clear the purple Stadium highlight or the Procedural Spawner highlight
+			Node->SetHighlight(0); 
+
+			// Kill the active queue
+			if (Node->SpawnerComponent)
+			{
+				Node->SpawnerComponent->CancelRushHour();
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Repaired %d roadblocks and canceled active surges!"), RepairedCount);
 }
 
 void ATrafficPlayerController::GenerateProceduralCity(int32 GridSize)
@@ -785,4 +799,43 @@ void ATrafficPlayerController::SpawnProceduralRoad(AIntersectionNode* Start, AIn
         NewRoad->SetupConnection(Start, End);
         NewRoad->FinishSpawning(SpawnTransform);
     }
+}
+
+void ATrafficPlayerController::PopulateCityWithTraffic()
+{
+	TArray<AActor*> AllNodes;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), AllNodes);
+
+	if (AllNodes.Num() == 0) return;
+
+	// We don't want every single node spawning cars, or the city will gridlock instantly.
+	// Let's activate roughly 25% of the intersections to act as city "entrances/hubs".
+	int32 SpawnersToActivate = FMath::Max(1, AllNodes.Num() / 4); 
+	int32 ActivatedCount = 0;
+
+	// Shuffle the array to randomize which nodes get selected
+	for (int32 i = AllNodes.Num() - 1; i > 0; i--)
+	{
+		int32 j = FMath::RandRange(0, i);
+		AllNodes.Swap(i, j);
+	}
+
+	// Loop through our newly shuffled array and turn on the spawners
+	for (AActor* Actor : AllNodes)
+	{
+		AIntersectionNode* Node = Cast<AIntersectionNode>(Actor);
+		if (Node && Node->SpawnerComponent)
+		{
+			// This calls the function you already wrote to start the random spawn timer!
+			Node->SpawnerComponent->SetAsRandomSpawner();
+            
+			// Turn the node slightly green/blue visually so the player knows it's a spawner
+			Node->SetHighlight(251); 
+            
+			ActivatedCount++;
+			if (ActivatedCount >= SpawnersToActivate) break;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("PROCEDURAL TRAFFIC: Activated %d random spawners across the city!"), ActivatedCount);
 }

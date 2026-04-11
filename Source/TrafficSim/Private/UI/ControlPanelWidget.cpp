@@ -1,7 +1,9 @@
 #include "UI/ControlPanelWidget.h"
 #include "Components/Button.h"
+#include "Components/Slider.h"
 #include "Components/SpinBox.h"
 #include "Controller/TrafficPlayerController.h"
+#include "Pawn/RTSCameraPawn.h"
 
 void UControlPanelWidget::NativeConstruct()
 {
@@ -26,7 +28,8 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_ExportCSV) Btn_ExportCSV->OnClicked.AddDynamic(this, &UControlPanelWidget::OnExportCSVClicked);
 	if (Btn_RepairRoads) Btn_RepairRoads->OnClicked.AddDynamic(this, &UControlPanelWidget::OnRepairRoadsClicked);
 	if (Btn_GenerateCity) Btn_GenerateCity->OnClicked.AddDynamic(this, &UControlPanelWidget::OnGenerateCityClicked);
-	
+	if (Btn_PopulateTraffic) Btn_PopulateTraffic->OnClicked.AddDynamic(this, &UControlPanelWidget::OnPopulateTrafficClicked);
+	if (Slider_PanSpeed) Slider_PanSpeed->OnValueChanged.AddDynamic(this, &UControlPanelWidget::OnPanSpeedChanged);
 }
 
 void UControlPanelWidget::OnToggleDriveSideClicked()
@@ -177,6 +180,24 @@ void UControlPanelWidget::OnGenerateCityClicked()
 		int32 Size = Spin_CitySize ? (int32)Spin_CitySize->GetValue() : 4; 
         
 		PC->GenerateProceduralCity(Size);
-		OnCloseClicked(); // Close the menu so the user can see the city spawn!
+		OnCloseClicked();
+	}
+}
+
+void UControlPanelWidget::OnPopulateTrafficClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->PopulateCityWithTraffic();
+		OnCloseClicked();
+	}
+}
+
+void UControlPanelWidget::OnPanSpeedChanged(float Value)
+{
+	// Grab the physical pawn the player is currently possessing
+	if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(GetOwningPlayerPawn()))
+	{
+		DroneCam->SetPanSpeed(Value);
 	}
 }

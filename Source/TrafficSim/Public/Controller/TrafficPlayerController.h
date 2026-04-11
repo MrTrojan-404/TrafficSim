@@ -147,6 +147,11 @@ public:
 
 	// Helper function to handle the deferred spawning logic for algorithmic roads
 	void SpawnProceduralRoad(AIntersectionNode* Start, AIntersectionNode* End);
+
+	// TRAFFIC POPULATION
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Procedural")
+	void PopulateCityWithTraffic();
+	
 protected:
 	virtual void BeginPlay() override;
 

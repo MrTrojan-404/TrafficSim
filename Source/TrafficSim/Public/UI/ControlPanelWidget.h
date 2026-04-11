@@ -77,6 +77,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class USpinBox* Spin_CitySize;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_PopulateTraffic;
+
+	UPROPERTY(meta = (BindWidget))
+	class USlider* Slider_PanSpeed;
 	
 private:
 	// Button bind functions
@@ -99,5 +105,7 @@ private:
 	UFUNCTION() void OnExportCSVClicked();
 	UFUNCTION() void OnRepairRoadsClicked();
 	UFUNCTION() void OnGenerateCityClicked();
+	UFUNCTION() void OnPopulateTrafficClicked();
+	UFUNCTION() void OnPanSpeedChanged(float Value);
 	
 };

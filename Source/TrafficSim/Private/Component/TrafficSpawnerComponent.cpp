@@ -242,3 +242,8 @@ void UTrafficSpawnerComponent::ProcessRushHourSpawn()
 		GetWorld()->GetTimerManager().ClearTimer(RushHourTimerHandle);
 	}
 }
+void UTrafficSpawnerComponent::CancelRushHour()
+{
+	QueuedCarsToSpawn = 0;
+	GetWorld()->GetTimerManager().ClearTimer(SpawnQueueTimer);
+}
