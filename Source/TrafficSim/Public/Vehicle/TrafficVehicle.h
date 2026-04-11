@@ -63,6 +63,8 @@ public:
 
 	float DistanceAlongSpline;
 
+	float TimeStuck = 0.0f;
+	
 protected:
 	virtual void BeginPlay() override;
 

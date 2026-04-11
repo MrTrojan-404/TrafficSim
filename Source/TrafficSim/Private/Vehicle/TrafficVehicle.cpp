@@ -242,10 +242,9 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
     {
         ARoadSegment* NextSegment = CurrentPath[PathIndex + 1];
 
-        // If the user drops a roadblock on our upcoming turn...
-        if (IsValid(NextSegment) && NextSegment->bIsBlocked)
+        // ---> THE FIX: Check if the road is blocked OR at maximum capacity! <---
+        if (IsValid(NextSegment) && (NextSegment->bIsBlocked || NextSegment->CurrentVehicleCount >= NextSegment->MaxCapacity))
         {
-            // Only check for a detour every 2 seconds to prevent massive CPU lag
             float CurrentTime = GetWorld()->GetTimeSeconds();
             if (CurrentTime - LastGPSCheckTime > 2.0f)
             {
@@ -256,10 +255,8 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
                 
                 if (Subsystem && DebugEndNode && UpcomingIntersection)
                 {
-                    // Ask A* for a new route
                     TArray<ARoadSegment*> DetourPath = Subsystem->FindPath(UpcomingIntersection, DebugEndNode);
                     
-                    // Only apply the detour if we found a path AND the path doesn't use the blocked road
                     if (DetourPath.Num() > 0 && DetourPath[0] != NextSegment)
                     {
                         CurrentPath.RemoveAt(PathIndex + 1, CurrentPath.Num() - (PathIndex + 1));
@@ -398,4 +395,23 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
 
         SetActorLocationAndRotation(OffsetLocation, FinalRotation);
     }
-}
+    // 9. THE GRIDLOCK RELIEF VALVE
+    if (CurrentSpeed < 5.0f)
+    {
+        TimeStuck += DeltaTime;
+        
+        // If trapped in unmoving gridlock for 20 seconds, give up and clear the road
+        if (TimeStuck > 20.0f)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("TrafficSim: Vehicle despawned to relieve cascading gridlock!"));
+            UnregisterFromRoad();
+            Destroy();
+            return;
+        }
+    }
+    else
+    {
+        // Reset the timer the moment traffic starts flowing again
+        TimeStuck = 0.0f;
+    }
+} 
