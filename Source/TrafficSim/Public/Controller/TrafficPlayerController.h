@@ -137,6 +137,9 @@ public:
 	// ANALYTICS EXPORT
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Stats")
 	void ExportAnalyticsToCSV();
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
+	void ClearAllRoadblocks();
 	
 protected:
 	virtual void BeginPlay() override;

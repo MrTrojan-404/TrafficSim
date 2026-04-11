@@ -23,6 +23,7 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_ScenarioArtery) Btn_ScenarioArtery->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioArteryClicked);
 	if (Btn_ScenarioStadium) Btn_ScenarioStadium->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioStadiumClicked);
 	if (Btn_ExportCSV) Btn_ExportCSV->OnClicked.AddDynamic(this, &UControlPanelWidget::OnExportCSVClicked);
+	if (Btn_RepairRoads) Btn_RepairRoads->OnClicked.AddDynamic(this, &UControlPanelWidget::OnRepairRoadsClicked);
 	
 }
 
@@ -155,5 +156,13 @@ void UControlPanelWidget::OnExportCSVClicked()
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		PC->ExportAnalyticsToCSV();
+	}
+}
+
+void UControlPanelWidget::OnRepairRoadsClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->ClearAllRoadblocks();
 	}
 }

@@ -427,6 +427,12 @@ void ATrafficPlayerController::ClearTraffic()
 			Road->CurrentVehicleCount = 0;
 			Road->VehiclesForward.Empty();
 			Road->VehiclesBackward.Empty();
+
+			Road->bIsBlocked = false;
+			Road->bDisableHeatmap = false;
+			Road->SetHighlight(0);
+			if (Road->RoadblockVisual) Road->RoadblockVisual->SetVisibility(false);
+			Road->UpdateHeatmap(); // Force the color to reset to black
 		}
 	}
 	TotalTripsCompleted = 0;
@@ -675,4 +681,33 @@ void ATrafficPlayerController::ExportAnalyticsToCSV()
 	{
 		UE_LOG(LogTemp, Error, TEXT("ANALYTICS EXPORT FAILED!"));
 	}
+}
+
+void ATrafficPlayerController::ClearAllRoadblocks()
+{
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+    
+	int32 RepairedCount = 0;
+
+	for (AActor* A : Roads)
+	{
+		ARoadSegment* Road = Cast<ARoadSegment>(A);
+		if (Road && Road->bIsBlocked)
+		{
+			Road->bIsBlocked = false;
+			Road->bDisableHeatmap = false;
+			Road->SetHighlight(0);
+          
+			if (Road->RoadblockVisual) 
+			{
+				Road->RoadblockVisual->SetVisibility(false);
+			}
+          
+			Road->UpdateHeatmap(); // Force the material to recalculate instantly
+			RepairedCount++;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Repaired %d roadblocks! Traffic resuming."), RepairedCount);
 }

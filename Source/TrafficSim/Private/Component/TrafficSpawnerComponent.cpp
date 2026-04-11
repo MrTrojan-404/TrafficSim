@@ -41,23 +41,14 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
     }
 
     AIntersectionNode* MyNode = Cast<AIntersectionNode>(GetOwner());
-    if (!MyNode || MyNode->OutgoingSegments.Num() == 0) return;
+    if (!MyNode) return;
 
-    ARoadSegment* TargetRoad = MyNode->OutgoingSegments[0]; // Pick the exit road
-
-    // ---> CONDITION 1: Is the road already full? <---
-    if (TargetRoad->CurrentVehicleCount >= TargetRoad->MaxCapacity)
-    {
-        return; // Road is full, wait for the next timer tick!
-    }
-
-    // ---> CONDITION 2: Is the Master Light Red? <---
+    // ---> CONDITION 1: Is the Master Light Red? <---
     if (MyNode->LightState == ELightOverrideState::AllRed)
     {
-        return; // Light is red, hold the cars!
+        return; // Light is red, hold the cars in the stadium!
     }
 
-    // --- YOUR SPAWN LOGIC GOES HERE ---
     if (VehicleClassesToSpawn.Num() == 0) return;
 
     UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
@@ -66,7 +57,7 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
     AIntersectionNode* ChosenDestination = nullptr;
     TArray<ARoadSegment*> FinalPath;
 
-    // 1. Determine destination based on spawner type
+    // 2. PATHFINDING FIRST (Find out where this specific car wants to go)
     if (bIsRandomDest)
     {
         TArray<AActor*> AllNodes;
@@ -108,7 +99,33 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
         return;
     }
 
-    // 2. Actually spawn the car
+	// 3. TARGET ROAD CHECK
+	ARoadSegment* TargetRoad = FinalPath[0]; 
+
+	if (TargetRoad->CurrentVehicleCount >= TargetRoad->MaxCapacity || TargetRoad->bIsBlocked)
+	{
+		return; 
+	}
+
+	// PHYSICAL CLEARANCE CHECK
+	// Check if the spawn coordinate is physically occupied by a backed-up car
+	bool bIsForward = (MyNode == TargetRoad->StartNode);
+	TArray<ATrafficVehicle*>& LaneToCheck = bIsForward ? TargetRoad->VehiclesForward : TargetRoad->VehiclesBackward;
+	float SpawnDistance = bIsForward ? 0.0f : TargetRoad->SplineComponent->GetSplineLength();
+
+	for (ATrafficVehicle* Car : LaneToCheck)
+	{
+		if (IsValid(Car))
+		{
+			// If any car is within 500 units of the spawn point, abort the spawn for this tick!
+			if (FMath::Abs(Car->DistanceAlongSpline - SpawnDistance) < 500.0f)
+			{
+				return; // Wait for the car to pull forward!
+			}
+		}
+	}
+	
+    // 4. SPAWN THE CAR
     FVector SpawnLocation = MyNode->GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
     FRotator SpawnRotation = MyNode->GetActorRotation();
 
@@ -129,7 +146,7 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
         }
     }
 
-    // 3. Car successfully left the stadium! Remove it from the waiting list.
+    // 5. Car successfully left the stadium! Remove it from the waiting list.
     QueuedCarsToSpawn--;
 }
 

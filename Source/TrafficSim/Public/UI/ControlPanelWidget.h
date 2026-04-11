@@ -68,6 +68,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_ExportCSV;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_RepairRoads;
 	
 private:
 	// Button bind functions
@@ -88,5 +91,6 @@ private:
 	UFUNCTION() void OnScenarioArteryClicked();
 	UFUNCTION() void OnScenarioStadiumClicked();
 	UFUNCTION() void OnExportCSVClicked();
+	UFUNCTION() void OnRepairRoadsClicked();
 	
 };

@@ -60,13 +60,15 @@ public:
 
 	// Tracks when the car spawned to calculate trip duration
 	float SpawnTime = 0.0f;
+
+	float DistanceAlongSpline;
+
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	// Internal tracking for spline movement
 	ARoadSegment* CurrentSegment;
-	float DistanceAlongSpline;
 	int32 PathIndex;
 
 	void MoveAlongSpline(float DeltaTime);
