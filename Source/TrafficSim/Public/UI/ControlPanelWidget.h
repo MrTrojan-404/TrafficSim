@@ -83,6 +83,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class USlider* Slider_PanSpeed;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ReplayTutorial;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ToggleHeatmap;
 	
 private:
 	// Button bind functions
@@ -107,5 +113,7 @@ private:
 	UFUNCTION() void OnGenerateCityClicked();
 	UFUNCTION() void OnPopulateTrafficClicked();
 	UFUNCTION() void OnPanSpeedChanged(float Value);
+	UFUNCTION() void OnReplayTutorialClicked();
+	UFUNCTION() void OnToggleHeatmapClicked();
 	
 };

@@ -30,6 +30,9 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_GenerateCity) Btn_GenerateCity->OnClicked.AddDynamic(this, &UControlPanelWidget::OnGenerateCityClicked);
 	if (Btn_PopulateTraffic) Btn_PopulateTraffic->OnClicked.AddDynamic(this, &UControlPanelWidget::OnPopulateTrafficClicked);
 	if (Slider_PanSpeed) Slider_PanSpeed->OnValueChanged.AddDynamic(this, &UControlPanelWidget::OnPanSpeedChanged);
+	if (Btn_ReplayTutorial) Btn_ReplayTutorial->OnClicked.AddDynamic(this, &UControlPanelWidget::OnReplayTutorialClicked);
+	if (Btn_ToggleHeatmap) Btn_ToggleHeatmap->OnClicked.AddDynamic(this, &UControlPanelWidget::OnToggleHeatmapClicked);
+	
 }
 
 void UControlPanelWidget::OnToggleDriveSideClicked()
@@ -199,5 +202,23 @@ void UControlPanelWidget::OnPanSpeedChanged(float Value)
 	if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(GetOwningPlayerPawn()))
 	{
 		DroneCam->SetPanSpeed(Value);
+	}
+}
+void UControlPanelWidget::OnReplayTutorialClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		// Cancel any active tutorial to reset the UI, then start it fresh
+		PC->HideTutorialWidget(); 
+		PC->StartTutorial();
+		OnCloseClicked();
+	}
+}
+
+void UControlPanelWidget::OnToggleHeatmapClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->ToggleMasterHeatmap();
 	}
 }

@@ -168,7 +168,10 @@ void ARoadSegment::SetHighlight(int32 StencilValue)
 
 void ARoadSegment::UpdateHeatmap()
 {
-	if (bDisableHeatmap)
+	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+	
+	//  Check both the Master Switch and the Local Switch 
+	if ((PC && !PC->bMasterHeatmapEnabled) || bDisableHeatmap)
 	{
 		for (UMaterialInstanceDynamic* MID : HeatmapMaterials)
 		{
@@ -185,7 +188,6 @@ void ARoadSegment::UpdateHeatmap()
 	float VisualIntensityCurve = FMath::Pow(CongestionRatio, 3.0f);
 
 	// ACCESSIBILITY CHECK
-	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
 	if (PC && PC->bEnableHeatmapPulse && VisualIntensityCurve > 0.1f)
 	{
 		// Add the sine wave throb ONLY if the toggle is on and there is actual congestion

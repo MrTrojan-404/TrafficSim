@@ -171,6 +171,12 @@ public:
 	//TUTORIAL TIMER
 	FTimerHandle TutorialTimerHandle;
 	void HideTutorialWidget();
+
+	UPROPERTY(BlueprintReadWrite, Category = "Traffic Control | Settings")
+	bool bMasterHeatmapEnabled = true;
+
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Settings")
+	void ToggleMasterHeatmap();
 	
 protected:
 	virtual void BeginPlay() override;

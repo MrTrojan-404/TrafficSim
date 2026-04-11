@@ -53,6 +53,25 @@ void ATrafficPlayerController::BeginPlay()
 		}
 	}
 
+	// TUTORIAL SAVE CHECK
+	// We use a separate slot name "TrafficSettings" so we don't overwrite their City Layouts!
+	UTrafficSaveGame* SaveSettings = Cast<UTrafficSaveGame>(UGameplayStatics::LoadGameFromSlot(TEXT("TrafficSettings"), 0));
+    
+	if (!SaveSettings)
+	{
+		// First time playing! Create the save file.
+		SaveSettings = Cast<UTrafficSaveGame>(UGameplayStatics::CreateSaveGameObject(UTrafficSaveGame::StaticClass()));
+	}
+
+	if (!SaveSettings->bHasCompletedTutorial)
+	{
+		StartTutorial();
+       
+		// Update the file so it never auto-runs again
+		SaveSettings->bHasCompletedTutorial = true;
+		UGameplayStatics::SaveGameToSlot(SaveSettings, TEXT("TrafficSettings"), 0);
+	}
+	
 	// Start checking for random events every 15 seconds
 	GetWorld()->GetTimerManager().SetTimer(RandomEventTimer, this, &ATrafficPlayerController::TriggerRandomEvent, 15.0f, true);
 }
@@ -90,6 +109,24 @@ void ATrafficPlayerController::TriggerRandomEvent()
 			}
 		}
 	}
+}
+
+void ATrafficPlayerController::ToggleMasterHeatmap()
+{
+	bMasterHeatmapEnabled = !bMasterHeatmapEnabled;
+    
+	// Force all roads to recalculate immediately so the UI feels responsive
+	TArray<AActor*> Roads;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+	for (AActor* A : Roads)
+	{
+		if (ARoadSegment* Road = Cast<ARoadSegment>(A))
+		{
+			Road->UpdateHeatmap();
+		}
+	}
+    
+	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Heatmaps set to %d"), bMasterHeatmapEnabled);
 }
 
 void ATrafficPlayerController::SetupInputComponent()

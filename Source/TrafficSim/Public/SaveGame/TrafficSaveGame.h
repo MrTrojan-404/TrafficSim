@@ -41,4 +41,7 @@ public:
 
 	UPROPERTY()
 	TArray<FRoadSaveData> SavedRoads;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
+	bool bHasCompletedTutorial = false;
 };
