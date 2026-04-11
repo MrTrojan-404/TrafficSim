@@ -3,7 +3,9 @@
 #include "Components/Slider.h"
 #include "Components/SpinBox.h"
 #include "Controller/TrafficPlayerController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Pawn/RTSCameraPawn.h"
+#include "SaveGame/TrafficSaveGame.h"
 
 void UControlPanelWidget::NativeConstruct()
 {
@@ -32,7 +34,24 @@ void UControlPanelWidget::NativeConstruct()
 	if (Slider_PanSpeed) Slider_PanSpeed->OnValueChanged.AddDynamic(this, &UControlPanelWidget::OnPanSpeedChanged);
 	if (Btn_ReplayTutorial) Btn_ReplayTutorial->OnClicked.AddDynamic(this, &UControlPanelWidget::OnReplayTutorialClicked);
 	if (Btn_ToggleHeatmap) Btn_ToggleHeatmap->OnClicked.AddDynamic(this, &UControlPanelWidget::OnToggleHeatmapClicked);
-	
+	if (Slider_TimeOfDay) Slider_TimeOfDay->OnValueChanged.AddDynamic(this, &UControlPanelWidget::OnTimeOfDayChanged);
+
+	// Sync sliders to the actual engine values
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		if (Slider_TimeOfDay)
+		{
+			Slider_TimeOfDay->SetValue(PC->CurrentTimeOfDay);
+		}
+
+		if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(PC->GetPawn()))
+		{
+			if (Slider_PanSpeed)
+			{
+				Slider_PanSpeed->SetValue(DroneCam->GetPanSpeed());
+			}
+		}
+	}
 }
 
 void UControlPanelWidget::OnToggleDriveSideClicked()
@@ -77,12 +96,27 @@ void UControlPanelWidget::OnClearCityClicked()
 
 void UControlPanelWidget::OnCloseClicked()
 {
-	// Tell the controller we are closing so it can clear its pointer
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
+		// 1. SAVE SETTINGS TO DISK BEFORE CLOSING
+		UTrafficSaveGame* SaveSettings = Cast<UTrafficSaveGame>(UGameplayStatics::LoadGameFromSlot(TEXT("TrafficSettings"), 0));
+		if (!SaveSettings) SaveSettings = Cast<UTrafficSaveGame>(UGameplayStatics::CreateSaveGameObject(UTrafficSaveGame::StaticClass()));
+
+		SaveSettings->SavedTimeOfDay = PC->CurrentTimeOfDay;
+
+		if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(PC->GetPawn()))
+		{
+			SaveSettings->SavedPanSpeed = DroneCam->GetPanSpeed();
+		}
+
+		UGameplayStatics::SaveGameToSlot(SaveSettings, TEXT("TrafficSettings"), 0);
+		UE_LOG(LogTemp, Warning, TEXT("SETTINGS SAVED: Preferences successfully written to disk."));
+
+		// 2. Close the UI
 		PC->ToggleControlPanel(); 
 	}
 }
+
 void UControlPanelWidget::OnClearTrafficClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
@@ -220,5 +254,12 @@ void UControlPanelWidget::OnToggleHeatmapClicked()
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		PC->ToggleMasterHeatmap();
+	}
+}
+void UControlPanelWidget::OnTimeOfDayChanged(float Value)
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetTimeOfDay(Value);
 	}
 }

@@ -17,6 +17,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Camera Settings")
     void SetPanSpeed(float NewSpeed);
+
+    // Getter for the UI
+    UFUNCTION(BlueprintPure, Category = "Camera Settings")
+    float GetPanSpeed() const { return PanSpeed; }
     
 protected:
     virtual void BeginPlay() override;

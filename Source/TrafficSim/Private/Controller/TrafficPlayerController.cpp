@@ -6,8 +6,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
 #include "Component/TrafficSpawnerComponent.h"
+#include "Engine/DirectionalLight.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Kismet/GameplayStatics.h"
+#include "Pawn/RTSCameraPawn.h"
 #include "Road/DynamicObstacle.h"
 #include "Road/IntersectionNode.h"
 #include "Road/RoadSegment.h"
@@ -71,6 +73,12 @@ void ATrafficPlayerController::BeginPlay()
 		SaveSettings->bHasCompletedTutorial = true;
 		UGameplayStatics::SaveGameToSlot(SaveSettings, TEXT("TrafficSettings"), 0);
 	}
+	SetTimeOfDay(SaveSettings->SavedTimeOfDay);
+
+	if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(GetPawn()))
+	{
+		DroneCam->SetPanSpeed(SaveSettings->SavedPanSpeed);
+	}
 	
 	// Start checking for random events every 15 seconds
 	GetWorld()->GetTimerManager().SetTimer(RandomEventTimer, this, &ATrafficPlayerController::TriggerRandomEvent, 15.0f, true);
@@ -108,6 +116,19 @@ void ATrafficPlayerController::TriggerRandomEvent()
 				UE_LOG(LogTemp, Warning, TEXT("RANDOM EVENT: A dynamic obstacle has wandered onto road %s!"), *ChosenRoad->GetName());
 			}
 		}
+	}
+}
+
+void ATrafficPlayerController::SetTimeOfDay(float TimeValue)
+{
+	CurrentTimeOfDay = TimeValue;
+
+	AActor* SunActor = UGameplayStatics::GetActorOfClass(GetWorld(), ADirectionalLight::StaticClass());
+	if (SunActor)
+	{
+		float NewPitch = FMath::Lerp(-90.0f, -5.0f, TimeValue); 
+		FRotator NewRotation = FRotator(NewPitch, SunActor->GetActorRotation().Yaw, 0.0f);
+		SunActor->SetActorRotation(NewRotation);
 	}
 }
 

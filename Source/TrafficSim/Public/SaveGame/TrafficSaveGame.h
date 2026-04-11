@@ -44,4 +44,11 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category = "Settings")
 	bool bHasCompletedTutorial = false;
+
+	// Hardware & Environment Settings
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
+	float SavedPanSpeed = 4000.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
+	float SavedTimeOfDay = 0.0f;
 };

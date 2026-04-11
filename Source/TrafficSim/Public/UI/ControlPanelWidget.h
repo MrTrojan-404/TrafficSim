@@ -89,7 +89,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_ToggleHeatmap;
-	
+
+	UPROPERTY(meta = (BindWidget))
+	USlider* Slider_TimeOfDay;
+
 private:
 	// Button bind functions
 	UFUNCTION() void OnLightsNormal();
@@ -115,5 +118,6 @@ private:
 	UFUNCTION() void OnPanSpeedChanged(float Value);
 	UFUNCTION() void OnReplayTutorialClicked();
 	UFUNCTION() void OnToggleHeatmapClicked();
-	
+	UFUNCTION() void OnTimeOfDayChanged(float Value);
+
 };

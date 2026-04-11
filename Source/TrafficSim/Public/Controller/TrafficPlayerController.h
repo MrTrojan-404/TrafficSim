@@ -177,6 +177,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Settings")
 	void ToggleMasterHeatmap();
+
+	//Track Time of Day
+	UPROPERTY(BlueprintReadOnly, Category = "Traffic Control | Settings")
+	float CurrentTimeOfDay = 0.0f;
+	
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Settings")
+	void SetTimeOfDay(float TimeValue); // 0.0 to 1.0
 	
 protected:
 	virtual void BeginPlay() override;
