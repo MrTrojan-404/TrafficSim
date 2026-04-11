@@ -3,8 +3,10 @@
 
 #include "UI/TrafficHUDWidget.h"
 
+#include "HttpModule.h"
 #include "Components/TextBlock.h"
 #include "Controller/TrafficPlayerController.h"
+#include "Interfaces/IHttpRequest.h"
 #include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
 #include "Vehicle/TrafficVehicle.h"
@@ -71,17 +73,18 @@ void UTrafficHUDWidget::UpdateStats()
 	{
 		Txt_ActiveRoadblocks->SetText(FText::AsNumber(ActiveRoadblocks));
 	}
+	float AverageCongestion = (FoundRoads.Num() > 0) ? (TotalCongestionRatio / FoundRoads.Num()) : 0.0f;
 
 	if (Txt_AverageCongestion)
 	{
-		float AverageCongestion = (FoundRoads.Num() > 0) ? (TotalCongestionRatio / FoundRoads.Num()) : 0.0f;
-       
 		int32 CongestionPercent = FMath::RoundToInt(AverageCongestion * 100.0f);
 		FString PercentString = FString::Printf(TEXT("%d%%"), CongestionPercent);
        
 		Txt_AverageCongestion->SetText(FText::FromString(PercentString));
 	}
 	// 3. Trip Analytics
+	float AverageTime = 0.0f;
+
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		if (Txt_CompletedTrips)
@@ -93,7 +96,7 @@ void UTrafficHUDWidget::UpdateStats()
 		{
 			if (PC->TotalTripsCompleted > 0)
 			{
-				float AverageTime = PC->CumulativeTravelTime / PC->TotalTripsCompleted;
+				AverageTime = PC->CumulativeTravelTime / PC->TotalTripsCompleted; // Removed the word "float" here!
 				FString TimeString = FString::Printf(TEXT("%d sec"), FMath::RoundToInt(AverageTime));
 				Txt_AverageTravelTime->SetText(FText::FromString(TimeString));
 			}
@@ -103,6 +106,24 @@ void UTrafficHUDWidget::UpdateStats()
 			}
 		}
 	}
+
+	// TELEMETRY BROADCAST
+	// Create the JSON payload
+	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f}"), 
+	   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime);
+
+	// Create and send the HTTP Request
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	Request->OnProcessRequestComplete().BindLambda([](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+	{
+		// We leave this empty because we don't care about the server's reply (Fire and Forget!)
+	});
+    
+	Request->SetURL("http://127.0.0.1:5000/telemetry"); // Sending to your local computer
+	Request->SetVerb("POST");
+	Request->SetHeader("Content-Type", "application/json");
+	Request->SetContentAsString(JsonPayload);
+	Request->ProcessRequest();
 }
 
 void UTrafficHUDWidget::HandleGameModeChanged(ETrafficGameMode NewMode)
