@@ -195,10 +195,8 @@ void UControlPanelWidget::OnScenarioStadiumClicked()
 }
 void UControlPanelWidget::OnExportCSVClicked()
 {
-	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
-	{
-		PC->ExportAnalyticsToCSV();
-	}
+	// Instantly opens the default web browser to your Python server
+	FPlatformProcess::LaunchURL(TEXT("http://127.0.0.1:5000"), nullptr, nullptr);
 }
 
 void UControlPanelWidget::OnRepairRoadsClicked()
