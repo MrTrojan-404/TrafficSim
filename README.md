@@ -1,17 +1,17 @@
-# 🏙️ UrbanFlow: Real-Time Traffic Network & Telemetry Simulation
+# TrafficSim: Real-Time Traffic Network & Telemetry Simulation
 
 ![Unreal Engine](https://img.shields.io/badge/Unreal_Engine-5.x-black?logo=unrealengine)
 ![C++](https://img.shields.io/badge/C++-17-00599C?logo=c%2B%2B)
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python)
 ![Flask](https://img.shields.io/badge/Flask-Microservice-black?logo=flask)
 
-**UrbanFlow** is a high-performance, agent-based traffic simulation built in Unreal Engine 5 (C++) featuring a decoupled, real-time Python/Flask telemetry dashboard. 
+**TrafficSim** is a high-performance, agent-based traffic simulation built in Unreal Engine 5 (C++) featuring a decoupled, real-time Python/Flask telemetry dashboard. 
 
 Designed for urban planners and data scientists, it allows users to dynamically generate road networks, trigger localized traffic surges, and monitor grid congestion via a live REST API microservice.
 
 ---
 
-## ✨ Core Features
+## Core Features
 
 * **A* Agent-Based Routing:** Vehicles autonomously navigate complex procedural grids, adapting to roadblocks and capacity limits in real-time.
 * **Procedural Network Editing:** In-game Build/Delete modes allow for dynamic modification of intersections and road segments on the fly.
@@ -22,9 +22,9 @@ Designed for urban planners and data scientists, it allows users to dynamically 
 
 ---
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 
-UrbanFlow separates the heavy graphical and mathematical simulation from data visualization to ensure maximum CPU efficiency.
+TrafficSim separates the heavy graphical and mathematical simulation from data visualization to ensure maximum CPU efficiency.
 
 1.  **The Engine (UE5 / C++):** Handles procedural generation, collision matrices, A* pathing algorithms, and UI state logic.
 2.  **The Network Layer (HTTP):** UE5 gathers actor statistics every 500ms and fires lightweight JSON payloads asynchronously.
@@ -33,7 +33,7 @@ UrbanFlow separates the heavy graphical and mathematical simulation from data vi
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 * Windows 10/11
@@ -47,11 +47,11 @@ For the pre-packaged presentation build, we have automated the server and client
 2. Double-click `Launch_Pitch.bat`. 
    *(This will silently initialize the Flask server in the background and launch the Unreal Engine simulation).*
 3. Inside the simulation UI, click **Launch Dashboard** to open the Command Center at `http://localhost:5000`.
-4. After closing the simulation, check the project directory for your timestamped `urbanflow_log_[DATE].csv` file.
+4. After closing the simulation, check the project directory for your timestamped `TrafficSim_log_[DATE].csv` file.
 
 ---
 
-## 🛠️ Development & Manual Testing
+## Development & Manual Testing
 
 If you are running the project from inside the Unreal Editor:
 1. Run `Start_Dashboard.bat` to spin up the Python listener.
