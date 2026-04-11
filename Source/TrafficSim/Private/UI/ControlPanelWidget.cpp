@@ -22,6 +22,7 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_TimeDil5) Btn_TimeDil5->OnClicked.AddDynamic(this, &UControlPanelWidget::OnTimeDil5Clicked);
 	if (Btn_ScenarioArtery) Btn_ScenarioArtery->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioArteryClicked);
 	if (Btn_ScenarioStadium) Btn_ScenarioStadium->OnClicked.AddDynamic(this, &UControlPanelWidget::OnScenarioStadiumClicked);
+	if (Btn_ExportCSV) Btn_ExportCSV->OnClicked.AddDynamic(this, &UControlPanelWidget::OnExportCSVClicked);
 	
 }
 
@@ -147,5 +148,12 @@ void UControlPanelWidget::OnScenarioStadiumClicked()
 	{
 		PC->TriggerScenario_StadiumEvent();
 		OnCloseClicked(); 
+	}
+}
+void UControlPanelWidget::OnExportCSVClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		PC->ExportAnalyticsToCSV();
 	}
 }

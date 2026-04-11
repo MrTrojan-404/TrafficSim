@@ -635,3 +635,44 @@ void ATrafficPlayerController::TriggerScenario_StadiumEvent()
 		}
 	}
 }
+
+void ATrafficPlayerController::ExportAnalyticsToCSV()
+{
+	// 1. Calculate our current metrics
+	float AverageTime = (TotalTripsCompleted > 0) ? (CumulativeTravelTime / TotalTripsCompleted) : 0.0f;
+
+	TArray<AActor*> Vehicles;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
+	int32 ActiveCars = Vehicles.Num();
+
+	// 2. Build the CSV String (Commas separate columns, \n separates rows)
+	FString CSVContent = TEXT("Traffic Network Analytics Report\n\n");
+    
+	CSVContent += TEXT("Metric,Value\n");
+	CSVContent += FString::Printf(TEXT("Total Trips Completed,%d\n"), TotalTripsCompleted);
+	CSVContent += FString::Printf(TEXT("Active Vehicles on Grid,%d\n"), ActiveCars);
+	CSVContent += FString::Printf(TEXT("Cumulative Travel Time (Seconds),%f\n"), CumulativeTravelTime);
+	CSVContent += FString::Printf(TEXT("Average Travel Time (Seconds),%f\n"), AverageTime);
+    
+	// Add a timestamp so they know exactly when the test was run
+	CSVContent += TEXT("\nReport Generated at: ,") + FDateTime::Now().ToString();
+
+	// 3. Define the save location (YourProjectFolder/Saved/TrafficAnalytics.csv)
+	FString FilePath = FPaths::ProjectSavedDir() + TEXT("TrafficAnalytics.csv");
+
+	// 4. Write to disk and notify the user!
+	if (FFileHelper::SaveStringToFile(CSVContent, *FilePath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ANALYTICS EXPORTED: Successfully saved to %s"), *FilePath);
+        
+		// Print a massive green message to the screen so the judges see it work
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Green, FString::Printf(TEXT("SUCCESS: Analytics exported to %s"), *FilePath));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("ANALYTICS EXPORT FAILED!"));
+	}
+}

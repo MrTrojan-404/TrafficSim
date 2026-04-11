@@ -107,7 +107,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Saving")
 	void LoadDefaultLayout();
 
-	// ---> SIMULATION STATS <---
+	// SIMULATION STATS
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Control | Stats")
 	int32 TotalTripsCompleted = 0;
 
@@ -123,16 +123,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Settings | Accessibility")
 	void ToggleHeatmapPulse();
 
-	// ---> SIMULATION SPEED <---
+	// SIMULATION SPEED
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Time")
 	void SetSimulationSpeed(float SpeedMultiplier);
 
-	// ---> DISASTER SCENARIOS <---
+	// DISASTER SCENARIOS
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
 	void TriggerScenario_ArteryCollapse();
 
 	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Scenarios")
 	void TriggerScenario_StadiumEvent();
+
+	// ANALYTICS EXPORT
+	UFUNCTION(BlueprintCallable, Category = "Traffic Control | Stats")
+	void ExportAnalyticsToCSV();
 	
 protected:
 	virtual void BeginPlay() override;

@@ -65,6 +65,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Btn_ScenarioStadium;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_ExportCSV;
 	
 private:
 	// Button bind functions
@@ -84,5 +87,6 @@ private:
 	UFUNCTION() void OnTimeDil5Clicked();
 	UFUNCTION() void OnScenarioArteryClicked();
 	UFUNCTION() void OnScenarioStadiumClicked();
+	UFUNCTION() void OnExportCSVClicked();
 	
 };
