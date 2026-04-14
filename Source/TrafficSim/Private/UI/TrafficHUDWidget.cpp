@@ -100,17 +100,26 @@ void UTrafficHUDWidget::UpdateStats()
     
 	// 3. Trip Analytics
 	float AverageTime = 0.0f;
-	int32 CarsPerMinute = 0; 
+	int32 CarsPerMinute = 0;
+	int32 SpawnRate = 0;
 
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		CarsPerMinute = PC->GetCarsPerMinute();
+		SpawnRate = PC->GetSpawnRate();
 
 		// Update the in-game UI
 		if (Txt_Throughput)
 		{
 			FString ThroughputString = FString::Printf(TEXT("%d CPM"), CarsPerMinute);
 			Txt_Throughput->SetText(FText::FromString(ThroughputString));
+		}
+
+		// Update the Spawn Rate UI
+		if (Txt_SpawnRate)
+		{
+			FString SpawnString = FString::Printf(TEXT("%d In/Min"), SpawnRate);
+			Txt_SpawnRate->SetText(FText::FromString(SpawnString));
 		}
 
 		if (Txt_CompletedTrips)
@@ -146,8 +155,8 @@ void UTrafficHUDWidget::UpdateStats()
 	}
 	
 	// TELEMETRY BROADCAST
-	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f, \"emissions\": %f, \"throughput\": %d}"), 
-	   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime, TotalEmissions, CarsPerMinute);
+	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f, \"emissions\": %f, \"throughput\": %d, \"spawn_rate\": %d}"), 
+		   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime, TotalEmissions, CarsPerMinute, SpawnRate);
 
     // Create and send the HTTP Request
     TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();

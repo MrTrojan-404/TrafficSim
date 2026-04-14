@@ -42,6 +42,10 @@ void ATrafficVehicle::BeginPlay()
             SetRoute(Path);
         }
     }
+    if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+    {
+        PC->RegisterSpawnedCar();
+    }
 }
 
 void ATrafficVehicle::Tick(float DeltaTime)

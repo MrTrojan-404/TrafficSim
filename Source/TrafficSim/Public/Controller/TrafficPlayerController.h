@@ -201,6 +201,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Analytics")
 	int32 GetCarsPerMinute();
+
+	// Spawn Tracking
+	UPROPERTY()
+	TArray<float> SpawnedTimestamps;
+
+	void RegisterSpawnedCar();
+
+	UFUNCTION(BlueprintCallable, Category = "Analytics")
+	int32 GetSpawnRate();
 protected:
 	virtual void BeginPlay() override;
 

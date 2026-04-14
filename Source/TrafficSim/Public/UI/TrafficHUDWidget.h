@@ -40,6 +40,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_Throughput;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_SpawnRate;
+	
 private:
 	FTimerHandle StatUpdateTimer;
 

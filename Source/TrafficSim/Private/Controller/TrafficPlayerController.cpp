@@ -219,6 +219,22 @@ void ATrafficPlayerController::SetupInputComponent()
 	}
 }
 
+void ATrafficPlayerController::RegisterSpawnedCar()
+{
+	SpawnedTimestamps.Add(GetWorld()->GetTimeSeconds());
+}
+
+int32 ATrafficPlayerController::GetSpawnRate()
+{
+	float OneMinuteAgo = GetWorld()->GetTimeSeconds() - 60.0f;
+    
+	SpawnedTimestamps.RemoveAll([OneMinuteAgo](float Timestamp) {
+		return Timestamp < OneMinuteAgo;
+	});
+    
+	return SpawnedTimestamps.Num();
+}
+
 void ATrafficPlayerController::OnScroll(const FInputActionValue& Value)
 {
 	float ScrollDirection = Value.Get<float>();
