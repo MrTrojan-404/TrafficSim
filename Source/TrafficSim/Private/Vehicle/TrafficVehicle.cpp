@@ -373,32 +373,37 @@ void ATrafficVehicle::MoveAlongSpline(float DeltaTime)
         }
     }
     // 8. UPDATE 3D TRANSFORM (LANE OFFSET LOGIC)
-    if (CurrentSegment) // <-- REMOVED the speed check so stopped cars can still pull over!
+    if (CurrentSegment) 
     {
         FVector BaseLocation = CurrentSegment->SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         FRotator BaseRotation = CurrentSegment->SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         FVector RightVector = CurrentSegment->SplineComponent->GetRightVectorAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
         
+        // Get the "Up" direction of the road
+        FVector UpVector = CurrentSegment->SplineComponent->GetUpVectorAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
+
         // Dynamic Lane Math based on the Road's configuration
         float BaseOffset = CurrentSegment->bDriveOnLeft ? -150.0f : 150.0f;
         float TargetLaneOffset = bTravelingForward ? BaseOffset : -BaseOffset; 
 
-        // ---> THE FIX: Multiply by 1.8 to force the car to the outside curb mathematically <---
         if (bIsPullingOver)
         {
             TargetLaneOffset *= 1.8f; 
         }
 
-        // Smoothly glide left/right instead of teleporting instantly
         CurrentLaneOffset = FMath::FInterpTo(CurrentLaneOffset, TargetLaneOffset, DeltaTime, 2.0f);
         
-        FVector OffsetLocation = BaseLocation + (RightVector * CurrentLaneOffset);
+        // Add the vertical offset here
+        float TireHeightOffset = 30.0f; 
+        
+        // Calculate the final 3D position (Base + Left/Right + Up/Down)
+        FVector OffsetLocation = BaseLocation + (RightVector * CurrentLaneOffset) + (UpVector * TireHeightOffset);
 
-        // If driving backward mathematically, we need to flip the car 180 degrees visually
         FRotator FinalRotation = bTravelingForward ? BaseRotation : (BaseRotation + FRotator(0, 180, 0));
 
         SetActorLocationAndRotation(OffsetLocation, FinalRotation);
     }
+    
     // 9. THE GRIDLOCK RELIEF VALVE
     if (CurrentSpeed < 5.0f)
     {
