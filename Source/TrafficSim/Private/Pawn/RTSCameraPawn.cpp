@@ -94,6 +94,21 @@ void ARTSCameraPawn::Tick(float DeltaTime)
     SetActorLocation(FMath::VInterpTo(GetActorLocation(), TargetLocation, DeltaTime, 10.0f));
     SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, TargetZoom, DeltaTime, 8.0f);
     SpringArm->SetRelativeRotation(FMath::RInterpTo(SpringArm->GetRelativeRotation(), TargetRotation, DeltaTime, 10.0f));
+
+    //  GOD MODE AUTOPILOT
+    if (bIsCinematicMode)
+    {
+        // 1. Slowly rotate the camera to the right (Yaw)
+        AddActorLocalRotation(FRotator(0.0f, 3.0f * DeltaTime, 0.0f));
+        
+        // 2. Slowly glide forward in whatever direction we are facing
+        AddActorLocalOffset(FVector(300.0f * DeltaTime, 0.0f, 0.0f));
+    }
+}
+
+void ARTSCameraPawn::ToggleCinematicMode()
+{
+    bIsCinematicMode = !bIsCinematicMode;
 }
 
 void ARTSCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

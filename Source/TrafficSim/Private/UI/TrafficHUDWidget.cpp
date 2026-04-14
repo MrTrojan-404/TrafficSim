@@ -39,54 +39,80 @@ void UTrafficHUDWidget::NativeDestruct()
 
 void UTrafficHUDWidget::UpdateStats()
 {
-	// 1. Count Total Vehicles
-	TArray<AActor*> FoundVehicles;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), FoundVehicles);
+    // 1. Count Total & Stopped Vehicles for Emissions Math
+    TArray<AActor*> FoundVehicles;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), FoundVehicles);
     
-	if (Txt_TotalVehicles)
-	{
-		Txt_TotalVehicles->SetText(FText::AsNumber(FoundVehicles.Num()));
-	}
+    int32 StoppedVehicles = 0;
 
-	// 2. Count Roadblocks & Congestion
-	TArray<AActor*> FoundRoads;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), FoundRoads);
+    for (AActor* Actor : FoundVehicles)
+    {
+       ATrafficVehicle* Vehicle = Cast<ATrafficVehicle>(Actor);
+       if (Vehicle)
+       {
+          // If the car is moving slower than 10 units/sec, consider it idling/stopped
+          if (Vehicle->CurrentSpeed < 10.0f)
+          {
+             StoppedVehicles++;
+          }
+       }
+    }
 
-	int32 ActiveRoadblocks = 0;
-	float TotalCongestionRatio = 0.0f;
+    if (Txt_TotalVehicles)
+    {
+       Txt_TotalVehicles->SetText(FText::AsNumber(FoundVehicles.Num()));
+    }
 
-	for (AActor* Actor : FoundRoads)
-	{
-		ARoadSegment* Road = Cast<ARoadSegment>(Actor);
-		if (Road)
-		{
-			if (Road->bIsBlocked) ActiveRoadblocks++;
+    // 2. Count Roadblocks & Congestion
+    TArray<AActor*> FoundRoads;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), FoundRoads);
+
+    int32 ActiveRoadblocks = 0;
+    float TotalCongestionRatio = 0.0f;
+
+    for (AActor* Actor : FoundRoads)
+    {
+       ARoadSegment* Road = Cast<ARoadSegment>(Actor);
+       if (Road)
+       {
+          if (Road->bIsBlocked) ActiveRoadblocks++;
           
-			if (Road->MaxCapacity > 0)
-			{
-				TotalCongestionRatio += FMath::Clamp((float)Road->CurrentVehicleCount / (float)Road->MaxCapacity, 0.0f, 1.0f);
-			}
-		}
-	}
+          if (Road->MaxCapacity > 0)
+          {
+             TotalCongestionRatio += FMath::Clamp((float)Road->CurrentVehicleCount / (float)Road->MaxCapacity, 0.0f, 1.0f);
+          }
+       }
+    }
 
-	if (Txt_ActiveRoadblocks)
-	{
-		Txt_ActiveRoadblocks->SetText(FText::AsNumber(ActiveRoadblocks));
-	}
-	float AverageCongestion = (FoundRoads.Num() > 0) ? (TotalCongestionRatio / FoundRoads.Num()) : 0.0f;
+    if (Txt_ActiveRoadblocks)
+    {
+       Txt_ActiveRoadblocks->SetText(FText::AsNumber(ActiveRoadblocks));
+    }
+    float AverageCongestion = (FoundRoads.Num() > 0) ? (TotalCongestionRatio / FoundRoads.Num()) : 0.0f;
 
-	if (Txt_AverageCongestion)
-	{
-		int32 CongestionPercent = FMath::RoundToInt(AverageCongestion * 100.0f);
-		FString PercentString = FString::Printf(TEXT("%d%%"), CongestionPercent);
+    if (Txt_AverageCongestion)
+    {
+       int32 CongestionPercent = FMath::RoundToInt(AverageCongestion * 100.0f);
+       FString PercentString = FString::Printf(TEXT("%d%%"), CongestionPercent);
        
-		Txt_AverageCongestion->SetText(FText::FromString(PercentString));
-	}
+       Txt_AverageCongestion->SetText(FText::FromString(PercentString));
+    }
+    
 	// 3. Trip Analytics
 	float AverageTime = 0.0f;
+	int32 CarsPerMinute = 0; 
 
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
+		CarsPerMinute = PC->GetCarsPerMinute();
+
+		// Update the in-game UI
+		if (Txt_Throughput)
+		{
+			FString ThroughputString = FString::Printf(TEXT("%d CPM"), CarsPerMinute);
+			Txt_Throughput->SetText(FText::FromString(ThroughputString));
+		}
+
 		if (Txt_CompletedTrips)
 		{
 			Txt_CompletedTrips->SetText(FText::AsNumber(PC->TotalTripsCompleted));
@@ -96,7 +122,7 @@ void UTrafficHUDWidget::UpdateStats()
 		{
 			if (PC->TotalTripsCompleted > 0)
 			{
-				AverageTime = PC->CumulativeTravelTime / PC->TotalTripsCompleted; // Removed the word "float" here!
+				AverageTime = PC->CumulativeTravelTime / PC->TotalTripsCompleted; 
 				FString TimeString = FString::Printf(TEXT("%d sec"), FMath::RoundToInt(AverageTime));
 				Txt_AverageTravelTime->SetText(FText::FromString(TimeString));
 			}
@@ -107,23 +133,34 @@ void UTrafficHUDWidget::UpdateStats()
 		}
 	}
 
-	// TELEMETRY BROADCAST
-	// Create the JSON payload
-	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f}"), 
-	   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime);
+    // 4. THE EMISSIONS CALCULATION
+    // Base moving cars emit 2.0 units of CO2. Idling cars are highly inefficient and emit 10.0 units.
+    float MovingCars = FoundVehicles.Num() - StoppedVehicles;
+    float TotalEmissions = (MovingCars * 2.0f) + (StoppedVehicles * 10.0f);
 
-	// Create and send the HTTP Request
-	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	Request->OnProcessRequestComplete().BindLambda([](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+	if (Txt_TotalEmissions)
 	{
-		// We leave this empty because we don't care about the server's reply (Fire and Forget!)
-	});
+		// Format it nicely so it says something like "450 Units" or "450 kg CO2"
+		FString EmissionString = FString::Printf(TEXT("%d kg CO2"), FMath::RoundToInt(TotalEmissions));
+		Txt_TotalEmissions->SetText(FText::FromString(EmissionString));
+	}
+	
+	// TELEMETRY BROADCAST
+	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f, \"emissions\": %f, \"throughput\": %d}"), 
+	   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime, TotalEmissions, CarsPerMinute);
+
+    // Create and send the HTTP Request
+    TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+    Request->OnProcessRequestComplete().BindLambda([](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+    {
+       // Fire and Forget
+    });
     
-	Request->SetURL("http://127.0.0.1:5000/telemetry"); // Sending to your local computer
-	Request->SetVerb("POST");
-	Request->SetHeader("Content-Type", "application/json");
-	Request->SetContentAsString(JsonPayload);
-	Request->ProcessRequest();
+    Request->SetURL("http://127.0.0.1:5000/telemetry"); 
+    Request->SetVerb("POST");
+    Request->SetHeader("Content-Type", "application/json");
+    Request->SetContentAsString(JsonPayload);
+    Request->ProcessRequest();
 }
 
 void UTrafficHUDWidget::HandleGameModeChanged(ETrafficGameMode NewMode)

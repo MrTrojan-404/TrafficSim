@@ -68,6 +68,7 @@ public:
 
 	// Called by the UI when the user clicks "Specific"
 	void StartSelectingDestination(class AIntersectionNode* SpawnerNode);
+	void ActivateGodMode();
 
 	// MASTER MENU SETUP
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
@@ -193,7 +194,13 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Control | Settings")
 	UMaterialInterface* GhostMaterial;
-	
+
+	//Throughput Tracking
+	UPROPERTY()
+	TArray<float> CompletedTripTimestamps;
+
+	UFUNCTION(BlueprintCallable, Category = "Analytics")
+	int32 GetCarsPerMinute();
 protected:
 	virtual void BeginPlay() override;
 
@@ -221,6 +228,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SecondaryClickAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* ToggleGodCameraAction;
+	
 	// RANDOM EVENTS (The Game Director)
 	UPROPERTY(EditDefaultsOnly, Category = "Events")
 	TSubclassOf<class ADynamicObstacle> ObstacleClass;

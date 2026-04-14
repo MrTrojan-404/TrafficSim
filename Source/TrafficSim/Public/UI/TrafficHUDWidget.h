@@ -34,6 +34,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_AverageTravelTime;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_TotalEmissions;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Txt_Throughput;
 private:
 	FTimerHandle StatUpdateTimer;
 

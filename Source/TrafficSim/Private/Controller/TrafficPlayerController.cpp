@@ -33,8 +33,10 @@ void ATrafficPlayerController::RegisterCompletedTrip(float TripDuration)
 {
 	TotalTripsCompleted++;
 	CumulativeTravelTime += TripDuration;
+    
+	//  Log the exact time this car finished its trip
+	CompletedTripTimestamps.Add(GetWorld()->GetTimeSeconds());
 }
-
 void ATrafficPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -212,6 +214,7 @@ void ATrafficPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SecondaryClickAction, ETriggerEvent::Started, this, &ATrafficPlayerController::OnSecondaryClick);
 		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &ATrafficPlayerController::OnScroll);
 		EnhancedInputComponent->BindAction(ToggleMenuAction, ETriggerEvent::Started, this, &ATrafficPlayerController::ToggleControlPanel);
+		EnhancedInputComponent->BindAction(ToggleGodCameraAction ,ETriggerEvent::Started,this, &ATrafficPlayerController::ActivateGodMode);
 		
 	}
 }
@@ -279,6 +282,17 @@ void ATrafficPlayerController::StartSelectingDestination(AIntersectionNode* Spaw
 	PendingSpawnerNode = SpawnerNode;
 	UE_LOG(LogTemp, Warning, TEXT("Please click a destination node..."));
 	// Notice we leave the Stencil Highlight ON here so the player remembers which spawner they are configuring!
+}
+
+void ATrafficPlayerController::ActivateGodMode()
+{
+	if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(GetPawn()))
+	{
+		DroneCam->ToggleCinematicMode();
+        
+		// Hide the mouse cursor to make it look like a pure movie
+		bShowMouseCursor = !DroneCam->bIsCinematicMode;
+	}
 }
 
 void ATrafficPlayerController::HandleDeleteModeClick()
@@ -352,6 +366,21 @@ void ATrafficPlayerController::OnPrimaryClick()
 			}
 		}
 	}
+}
+
+// Calculate throughput
+int32 ATrafficPlayerController::GetCarsPerMinute()
+{
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float OneMinuteAgo = CurrentTime - 60.0f;
+    
+	// Remove any timestamps that are older than 60 seconds to keep memory clean
+	CompletedTripTimestamps.RemoveAll([OneMinuteAgo](float Timestamp) {
+		return Timestamp < OneMinuteAgo;
+	});
+    
+	// The number of timestamps left in the array IS our Cars Per Minute!
+	return CompletedTripTimestamps.Num();
 }
 
 void ATrafficPlayerController::OnSecondaryClick()

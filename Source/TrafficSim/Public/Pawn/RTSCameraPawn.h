@@ -21,6 +21,11 @@ public:
     // Getter for the UI
     UFUNCTION(BlueprintPure, Category = "Camera Settings")
     float GetPanSpeed() const { return PanSpeed; }
+
+    UFUNCTION(BlueprintCallable)
+    void ToggleCinematicMode();
+
+    bool bIsCinematicMode = false;
     
 protected:
     virtual void BeginPlay() override;
