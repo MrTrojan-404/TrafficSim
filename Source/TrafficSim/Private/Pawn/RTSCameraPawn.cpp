@@ -4,6 +4,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Controller/TrafficPlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "Road/RoadSegment.h"
 
 ARTSCameraPawn::ARTSCameraPawn()
 {
@@ -56,7 +58,6 @@ void ARTSCameraPawn::Tick(float DeltaTime)
     {
         if (APlayerController* PC = Cast<APlayerController>(GetController()))
         {
-            //The cursor MUST be visible to allow edge scrolling
             if (PC->bShowMouseCursor && 
                !PC->IsInputKeyDown(EKeys::RightMouseButton) && 
                !PC->IsInputKeyDown(EKeys::MiddleMouseButton))
@@ -67,19 +68,19 @@ void ARTSCameraPawn::Tick(float DeltaTime)
                     int32 ViewportX, ViewportY;
                     PC->GetViewportSize(ViewportX, ViewportY);
 
-                    float EdgeBorder = 25.0f; // Trigger if mouse is within 25 pixels of the edge
+                    float EdgeBorder = 25.0f; 
                     FVector2D PanInput(0.0f, 0.0f);
 
-                    if (MouseX <= EdgeBorder) PanInput.Y = -1.0f; // Left
-                    else if (MouseX >= ViewportX - EdgeBorder) PanInput.Y = 1.0f; // Right
+                    if (MouseX <= EdgeBorder) PanInput.Y = -1.0f; 
+                    else if (MouseX >= ViewportX - EdgeBorder) PanInput.Y = 1.0f; 
 
-                    if (MouseY <= EdgeBorder) PanInput.X = 1.0f; // Forward/Up
-                    else if (MouseY >= ViewportY - EdgeBorder) PanInput.X = -1.0f; // Backward/Down
+                    if (MouseY <= EdgeBorder) PanInput.X = 1.0f; 
+                    else if (MouseY >= ViewportY - EdgeBorder) PanInput.X = -1.0f; 
 
                     if (!PanInput.IsZero())
                     {
-                        // Calculate movement relative to the camera's current orbit rotation
-                        FRotator YawRot(0.0f, SpringArm->GetRelativeRotation().Yaw, 0.0f);
+                        // Use World Rotation (GetComponentRotation), not Relative
+                        FRotator YawRot(0.0f, SpringArm->GetComponentRotation().Yaw, 0.0f);
                         FVector Forward = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
                         FVector Right = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
 
@@ -90,27 +91,55 @@ void ARTSCameraPawn::Tick(float DeltaTime)
         }
     }
 
-    // 2. SMOOTH INTERPOLATION
+    // 2. GOD MODE AUTOPILOT (Perfect Center Orbit)
+    if (bIsCinematicMode)
+    {
+        // ONLY rotate the camera arm around the locked TargetLocation.
+        TargetRotation.Yaw += 5.0f * DeltaTime; 
+    }
+    
+    // 3. SMOOTH INTERPOLATION (Applies to EVERYTHING cleanly now)
     SetActorLocation(FMath::VInterpTo(GetActorLocation(), TargetLocation, DeltaTime, 10.0f));
     SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, TargetZoom, DeltaTime, 8.0f);
     SpringArm->SetRelativeRotation(FMath::RInterpTo(SpringArm->GetRelativeRotation(), TargetRotation, DeltaTime, 10.0f));
-
-    //  GOD MODE AUTOPILOT
-    if (bIsCinematicMode)
-    {
-        // 1. Slowly rotate the camera to the right (Yaw)
-        AddActorLocalRotation(FRotator(0.0f, 3.0f * DeltaTime, 0.0f));
-        
-        // 2. Slowly glide forward in whatever direction we are facing
-        AddActorLocalOffset(FVector(300.0f * DeltaTime, 0.0f, 0.0f));
-    }
 }
 
 void ARTSCameraPawn::ToggleCinematicMode()
 {
     bIsCinematicMode = !bIsCinematicMode;
-}
 
+    if (bIsCinematicMode)
+    {
+        // 1. Dynamically calculate the true center of the city
+        FVector CityCenter = FVector::ZeroVector;
+        TArray<AActor*> AllIntersections;
+        
+        // ---> THE FIX: Search for Intersections, not Roads! <---
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), AIntersectionNode::StaticClass(), AllIntersections);
+
+        if (AllIntersections.Num() > 0)
+        {
+            FVector TotalLocation = FVector::ZeroVector;
+            for (AActor* Node : AllIntersections)
+            {
+                // Because nodes physically exist at their locations, this returns true coordinates!
+                TotalLocation += Node->GetActorLocation();
+            }
+            
+            CityCenter = TotalLocation / AllIntersections.Num();
+            CityCenter.Z = 0.0f; 
+        }
+
+        // 2. Lock the focal point to the calculated center
+        TargetLocation = CityCenter; 
+        
+        // 3. Pull the zoom way back to fit the whole city in frame
+        TargetZoom = 8000.0f; 
+        
+        // 4. Set a nice, cinematic downward tilt
+        TargetRotation.Pitch = -45.0f; 
+    }
+}
 void ARTSCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -127,8 +156,8 @@ void ARTSCameraPawn::OnMove(const FInputActionValue& Value)
 {
     FVector2D MovementVector = Value.Get<FVector2D>();
 
-    // Calculate movement relative to the camera's current orbit rotation
-    FRotator YawRot(0.0f, SpringArm->GetRelativeRotation().Yaw, 0.0f);
+    // Use World Rotation (GetComponentRotation)
+    FRotator YawRot(0.0f, SpringArm->GetComponentRotation().Yaw, 0.0f);
     FVector Forward = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
     FVector Right = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
 
