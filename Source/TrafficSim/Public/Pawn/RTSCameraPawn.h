@@ -67,7 +67,7 @@ protected:
     bool bEnableEdgeScroll = true;
 
     UPROPERTY(EditAnywhere, Category = "Camera Settings")
-    float MinZoom = 1000.0f;
+    float MinZoom = 700.0f;
 
     UPROPERTY(EditAnywhere, Category = "Camera Settings")
     float MaxZoom = 50000.0f;
