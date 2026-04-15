@@ -181,7 +181,7 @@ void ARoadSegment::BeginPlay()
 	}
 
 	// 3. Start the heatmap update loop (Running twice a second is highly optimized)
-	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.5f, true);
+	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.1f, true);
 
 	// Size the trigger box to cover the entire length of the road
 	if (SplineComponent)
@@ -289,9 +289,9 @@ void ARoadSegment::UpdateHeatmap()
 	// ACCESSIBILITY CHECK
 	if (PC && PC->bEnableHeatmapPulse && VisualIntensityCurve > 0.1f)
 	{
-		// Add the sine wave throb ONLY if the toggle is on and there is actual congestion
-		float Throb = ((FMath::Sin(GetWorld()->GetTimeSeconds() * 3.0f) * 0.5f) + 0.5f)*2; // Maps sine wave to 0-1
-		VisualIntensityCurve *= Throb; 
+		// Maps sine wave to fluctuate smoothly between 0.4 and 1.0
+		float Throb = (FMath::Sin(GetWorld()->GetTimeSeconds() * 5.0f) * 0.5f) + 0.7f;
+		VisualIntensityCurve *= Throb;
 	}
 
 	FLinearColor CurrentColor = FMath::Lerp(EmptyRoadColor, CongestedColor, VisualIntensityCurve);
