@@ -93,6 +93,12 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	USlider* Slider_TimeOfDay;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* Btn_GodMode;
+
+	UFUNCTION()
+	void OnGodModeClicked();
+	
 private:
 	// Button bind functions
 	UFUNCTION() void OnLightsNormal();

@@ -35,7 +35,8 @@ void UControlPanelWidget::NativeConstruct()
 	if (Btn_ReplayTutorial) Btn_ReplayTutorial->OnClicked.AddDynamic(this, &UControlPanelWidget::OnReplayTutorialClicked);
 	if (Btn_ToggleHeatmap) Btn_ToggleHeatmap->OnClicked.AddDynamic(this, &UControlPanelWidget::OnToggleHeatmapClicked);
 	if (Slider_TimeOfDay) Slider_TimeOfDay->OnValueChanged.AddDynamic(this, &UControlPanelWidget::OnTimeOfDayChanged);
-
+	if (Btn_GodMode) Btn_GodMode->OnClicked.AddDynamic(this, &UControlPanelWidget::OnGodModeClicked);
+	
 	// Sync sliders to the actual engine values
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
@@ -259,5 +260,19 @@ void UControlPanelWidget::OnTimeOfDayChanged(float Value)
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
 		PC->SetTimeOfDay(Value);
+	}
+}
+
+void UControlPanelWidget::OnGodModeClicked()
+{
+	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
+	{
+		if (ARTSCameraPawn* DroneCam = Cast<ARTSCameraPawn>(PC->GetPawn()))
+		{
+			DroneCam->ToggleCinematicMode();
+          
+			// Close the Control Panel automatically so the screen is clear for the cinematic!
+			OnCloseClicked(); 
+		}
 	}
 }
