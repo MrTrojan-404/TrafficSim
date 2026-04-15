@@ -222,6 +222,16 @@ void AIntersectionNode::SetLightState(ELightOverrideState NewState)
 
 void AIntersectionNode::ApplyLightColors()
 {
+	//  If lights are disabled, force black and abort
+	if (!bHasTrafficLights)
+	{
+		for (ARoadSegment* Segment : IncomingSegments)
+		{
+			if (Segment) Segment->SetIntersectionLightColor(this, FLinearColor(0.0f, 0.0f, 0.0f));
+		}
+		return;
+	}
+
 	// 1. ALL RED OVERRIDE
 	if (LightState == ELightOverrideState::AllRed)
 	{
@@ -247,7 +257,6 @@ void AIntersectionNode::ApplyLightColors()
 		}
 	}
 }
-
 void AIntersectionNode::DestroyIntersectionSafe()
 {
 	// We must make a temporary COPY of the arrays. 
