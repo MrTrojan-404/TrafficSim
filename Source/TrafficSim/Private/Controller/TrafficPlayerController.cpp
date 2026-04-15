@@ -6,6 +6,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
 #include "Component/TrafficSpawnerComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/StaticMeshActor.h"
 #include "GameFramework/FloatingPawnMovement.h"
@@ -175,6 +176,7 @@ void ATrafficPlayerController::SetTimeOfDay(float TimeValue)
 {
 	CurrentTimeOfDay = TimeValue;
 
+	// 1. Move the Sun
 	AActor* SunActor = UGameplayStatics::GetActorOfClass(GetWorld(), ADirectionalLight::StaticClass());
 	if (SunActor)
 	{
@@ -182,8 +184,47 @@ void ATrafficPlayerController::SetTimeOfDay(float TimeValue)
 		FRotator NewRotation = FRotator(NewPitch, SunActor->GetActorRotation().Yaw, 0.0f);
 		SunActor->SetActorRotation(NewRotation);
 	}
-}
 
+	// 2. THE SMART CITY SUNRISE/SUNSET CHECK
+	bool bNewNightState = (CurrentTimeOfDay >= 0.6f);
+    
+	// Only run this massive loop if the state actually CHANGED from Day to Night (or vice versa)
+	if (bIsNightTime != bNewNightState)
+	{
+		bIsNightTime = bNewNightState;
+
+		TArray<AActor*> Roads;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
+
+		if (!bIsNightTime)
+		{
+			// IT JUST BECAME DAY: Force all streetlights OFF immediately
+			for (AActor* A : Roads)
+			{
+				if (ARoadSegment* Road = Cast<ARoadSegment>(A))
+				{
+					if (Road->ForwardStreetLight) Road->ForwardStreetLight->SetIntensity(0.0f);
+					if (Road->BackwardStreetLight) Road->BackwardStreetLight->SetIntensity(0.0f);
+				}
+			}
+		}
+		else
+		{
+			// IT JUST BECAME NIGHT: Turn ON lights for any roads currently holding traffic
+			for (AActor* A : Roads)
+			{
+				if (ARoadSegment* Road = Cast<ARoadSegment>(A))
+				{
+					if (Road->CurrentVehicleCount > 0)
+					{
+						if (Road->ForwardStreetLight) Road->ForwardStreetLight->SetIntensity(15000.0f);
+						if (Road->BackwardStreetLight) Road->BackwardStreetLight->SetIntensity(15000.0f);
+					}
+				}
+			}
+		}
+	}
+}
 void ATrafficPlayerController::ToggleMasterHeatmap()
 {
 	bMasterHeatmapEnabled = !bMasterHeatmapEnabled;

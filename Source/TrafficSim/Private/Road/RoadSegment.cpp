@@ -5,6 +5,7 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Controller/TrafficPlayerController.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
 #include "Vehicle/TrafficVehicle.h"
@@ -22,7 +23,7 @@ ARoadSegment::ARoadSegment()
 	ForwardLightMesh->SetupAttachment(RootComponent);
 	ForwardLightMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	ForwardLightMesh->SetWorldScale3D(FVector(0.5f)); 
-
+	
 	BackwardLightMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackwardLightMesh"));
 	BackwardLightMesh->SetupAttachment(RootComponent);
 	BackwardLightMesh->SetCollisionProfileName(TEXT("NoCollision"));
@@ -36,6 +37,35 @@ ARoadSegment::ARoadSegment()
 	if (SplineComponent) SplineComponent->SetMobility(EComponentMobility::Movable);
 	if (ForwardLightMesh) ForwardLightMesh->SetMobility(EComponentMobility::Movable);
 	if (BackwardLightMesh) BackwardLightMesh->SetMobility(EComponentMobility::Movable);
+
+	// Initialize the Trigger Box
+	RoadTriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RoadTriggerBox"));
+	RoadTriggerBox->SetupAttachment(RootComponent);
+	// Optimization: ONLY check for overlap events, completely ignore physics and blocking
+	RoadTriggerBox->SetCollisionProfileName(TEXT("OverlapAllDynamic")); 
+
+	// Initialize the Lights
+	// FORWARD LIGHT SETUP 
+	ForwardStreetLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("ForwardStreetLight"));
+	ForwardStreetLight->SetupAttachment(ForwardLightMesh);
+	ForwardStreetLight->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f)); 
+	ForwardStreetLight->SetIntensity(0.0f); 
+	ForwardStreetLight->SetLightColor(FLinearColor(1.0f, 0.85f, 0.6f));
+	ForwardStreetLight->SetInnerConeAngle(60.0f); // Softens the center
+	ForwardStreetLight->SetOuterConeAngle(85.0f); // 85 degrees is massive
+	ForwardStreetLight->SetAttenuationRadius(3500.0f); // Reaches 3.5x further down the road
+	ForwardStreetLight->SetCastShadows(false);
+
+	// BACKWARD LIGHT SETUP
+	BackwardStreetLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("BackwardStreetLight"));
+	BackwardStreetLight->SetupAttachment(BackwardLightMesh);
+	BackwardStreetLight->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f)); 
+	BackwardStreetLight->SetIntensity(0.0f); 
+	BackwardStreetLight->SetLightColor(FLinearColor(1.0f, 0.85f, 0.6f));
+	BackwardStreetLight->SetInnerConeAngle(60.0f);
+	BackwardStreetLight->SetOuterConeAngle(85.0f);
+	BackwardStreetLight->SetAttenuationRadius(3500.0f);
+	BackwardStreetLight->SetCastShadows(false);
 }
 void ARoadSegment::OnConstruction(const FTransform& Transform)
 {
@@ -68,13 +98,13 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 				USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
 				SplineMesh->CreationMethod = EComponentCreationMethod::UserConstructionScript; 
 				
-				// ---> CRITICAL FIX: Setup Attachment MUST happen before Registering <---
+				// Setup Attachment MUST happen before Registering
 				SplineMesh->SetupAttachment(SplineComponent);
 
 				SplineMesh->SetStaticMesh(RoadMeshAsset);
 				SplineMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
-				SplineMesh->SetMobility(EComponentMobility::Static);
-
+				SplineMesh->SetMobility(EComponentMobility::Movable);
+				
 				// Now that it's attached properly, we register it to the world
 				SplineMesh->RegisterComponent();
 
@@ -152,6 +182,44 @@ void ARoadSegment::BeginPlay()
 
 	// 3. Start the heatmap update loop (Running twice a second is highly optimized)
 	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.5f, true);
+
+	// Size the trigger box to cover the entire length of the road
+	if (SplineComponent)
+	{
+		float RoadLength = SplineComponent->GetSplineLength();
+		RoadTriggerBox->SetBoxExtent(FVector(RoadLength / 2.0f, 400.0f, 300.0f)); 
+        
+		// Move the box to the center of the road
+		FVector CenterLoc = SplineComponent->GetLocationAtDistanceAlongSpline(RoadLength / 2.0f, ESplineCoordinateSpace::World);
+		RoadTriggerBox->SetWorldLocation(CenterLoc);
+	}
+
+	// Bind the highly optimized overlap events
+	RoadTriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ARoadSegment::OnVehicleEnter);
+	RoadTriggerBox->OnComponentEndOverlap.AddDynamic(this, &ARoadSegment::OnVehicleExit);
+}
+
+void ARoadSegment::OnVehicleEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+	if (PC && PC->CurrentTimeOfDay < 0.6f) return; 
+
+	if (Cast<ATrafficVehicle>(OtherActor))
+	{
+		// Lower the intensity so it's a soft glow
+		if (ForwardStreetLight) ForwardStreetLight->SetIntensity(15000.0f);
+		if (BackwardStreetLight) BackwardStreetLight->SetIntensity(15000.0f);
+	}
+}
+
+void ARoadSegment::OnVehicleExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	// Only turn off if the road is mathematically empty (no cars currently registered)
+	if (CurrentVehicleCount <= 0)
+	{
+		if (ForwardStreetLight) ForwardStreetLight->SetIntensity(0.0f);
+		if (BackwardStreetLight) BackwardStreetLight->SetIntensity(0.0f);
+	}
 }
 
 void ARoadSegment::SetHighlight(int32 StencilValue)

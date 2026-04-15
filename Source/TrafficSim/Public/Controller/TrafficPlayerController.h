@@ -210,6 +210,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Analytics")
 	int32 GetSpawnRate();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
+	bool bIsNightTime = false;
 protected:
 	virtual void BeginPlay() override;
 

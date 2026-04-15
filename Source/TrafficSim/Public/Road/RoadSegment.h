@@ -130,7 +130,22 @@ public:
 
 	UFUNCTION()
 	void OnHoverEnd(AActor* TouchedActor);
-	
+
+	// Smart City Lighting Components
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
+	class USpotLightComponent* ForwardStreetLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
+	USpotLightComponent* BackwardStreetLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
+	class UBoxComponent* RoadTriggerBox;
+
+	UFUNCTION()
+	void OnVehicleEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnVehicleExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 protected:
 	virtual void BeginPlay() override;
 

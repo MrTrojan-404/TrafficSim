@@ -18,8 +18,8 @@ ATrafficVehicle::ATrafficVehicle()
     
     // Disable physics to save massive CPU overhead
     VehicleMesh->SetSimulatePhysics(false);
-    VehicleMesh->SetCollisionProfileName(TEXT("NoCollision")); 
-
+    VehicleMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+    
     DistanceAlongSpline = 0.0f;
     PathIndex = 0;
 }
