@@ -7,6 +7,7 @@
 #include "Road/IntersectionNode.h"
 #include "TrafficPlayerController.generated.h"
 
+class AStaticMeshActor;
 struct FInputActionValue;
 /**
  * 
