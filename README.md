@@ -1,4 +1,4 @@
-# TrafficSim: Real-Time Traffic Network & Telemetry Simulation
+# TrafficSim: Agent-Based Traffic Resilience Testing
 
 ![Unreal Engine](https://img.shields.io/badge/Unreal_Engine-5.x-black?logo=unrealengine)
 ![C++](https://img.shields.io/badge/C++-17-00599C?logo=c%2B%2B)
@@ -7,33 +7,35 @@
 
 **TrafficSim** is a high-performance, agent-based traffic simulation built in Unreal Engine 5 (C++) featuring a decoupled, real-time Python/Flask telemetry dashboard. 
 
-Designed for urban planners and data scientists, it allows users to dynamically generate road networks, trigger localized traffic surges, and monitor grid congestion via a live REST API microservice.
+Built for the **TinkerQuest 26 Hackathon**, this tool moves beyond static urban planning models. It allows users to dynamically generate road networks, trigger real-world disruptions (like artery collapses or roadblocks), and evaluate infrastructure resilience via a live REST API microservice.
 
 ---
 
 ## Core Features
 
-* **A* Agent-Based Routing:** Vehicles autonomously navigate complex procedural grids, adapting to roadblocks and capacity limits in real-time.
-* **Procedural Network Editing:** In-game Build/Delete modes allow for dynamic modification of intersections and road segments on the fly.
-* **Dynamic State Management:** Complex UI layer interacting with C++ actor states to manage spawner nodes, destination linking, and active congestion events (Rush Hour / Stadium events).
-* **Decoupled Telemetry Microservice:** Unreal Engine broadcasts live JSON simulation states via HTTP POST requests to an external lightweight Python backend.
-* **Command Center Dashboard:** A responsive, dark-mode web application (HTML5/Chart.js) visualizing active vehicles, grid congestion limits, and average travel times in real-time.
-* **Automated Data Logging:** The backend automatically generates chronological, timestamped `.csv` logs for post-simulation data science analysis.
+* **A* Agent-Based Routing:** Vehicles are modeled as autonomous agents that navigate complex procedural grids, generating decentralized, emergent traffic patterns.
+* **Interactive Resilience Testing:** Planners can dynamically modify infrastructure in real-time by placing roadblocks, disabling traffic lights, or simulating massive traffic surges to evaluate network stress.
+* **Dynamic Environment & Smart Lighting:** Native UE5 SkyAtmosphere integration with an interactive time-of-day slider. Features procedural smart streetlights that trigger only when the sun dips below the horizon.
+* **Cinematic 'God Mode' Camera:** A custom algorithmic drone camera calculates the mathematical centroid of the procedural city to execute flawless 360-degree presentation orbits.
+* **Decoupled Telemetry Microservice:** Unreal Engine broadcasts live JSON simulation states via HTTP POST requests to an external, lightweight Python backend.
+* **Interpretable Outputs:** A responsive web application visualizes active vehicles, throughput vs. load, congestion heatmaps, and average travel times in real-time.
 
 ---
 
 ## Technical Architecture
 
-TrafficSim separates the heavy graphical and mathematical simulation from data visualization to ensure maximum CPU efficiency.
+TrafficSim separates the heavy visual/agent simulation from data visualization to ensure a flawless 60+ FPS environment for complex macro-system simulations.
 
-1.  **The Engine (UE5 / C++):** Handles procedural generation, collision matrices, A* pathing algorithms, and UI state logic.
-2.  **The Network Layer (HTTP):** UE5 gathers actor statistics every 500ms and fires lightweight JSON payloads asynchronously.
-3.  **The Backend (Python / Flask):** Catches telemetry payloads, sanitizes the data, appends to the CSV log file, and serves the REST API.
+1.  **The Engine (UE5 / C++):** Handles spatial hashing, collision matrices, A* pathing algorithms, and UI state logic without relying on heavy native physics (OverlapAllDynamic).
+2.  **The Network Layer (HTTP):** UE5 gathers agent statistics and fires lightweight JSON payloads asynchronously.
+3.  **The Backend (Python / Flask):** Catches telemetry payloads, sanitizes the data, logs it to chronological `.csv` files, and serves the REST API.
 4.  **The Frontend (JS / Chart.js):** Pings the Flask API and animates the live data streams.
 
 ---
 
 ## Getting Started
+
+> **Note:** The executable contains a fully interactive, in-engine tutorial to guide users through generating their first city and operating the simulation.
 
 ### Prerequisites
 * Windows 10/11
@@ -46,8 +48,8 @@ For the pre-packaged presentation build, we have automated the server and client
 1. Navigate to the game directory.
 2. Double-click `Launch_Pitch.bat`. 
    *(This will silently initialize the Flask server in the background and launch the Unreal Engine simulation).*
-3. Inside the simulation UI, click **Launch Dashboard** to open the Command Center at `http://localhost:5000`.
-4. After closing the simulation, check the project directory for your timestamped log files.
+3. Inside the simulation UI, click **Launch Live Dashboard** to open the Command Center at `http://localhost:5000`.
+4. After closing the simulation, check the project directory for your timestamped `.csv` log files.
 
 ---
 
@@ -56,7 +58,7 @@ For the pre-packaged presentation build, we have automated the server and client
 If you are running the project from inside the Unreal Editor:
 1. Run `Start_Dashboard.bat` to spin up the Python listener.
 2. Open the project in Unreal Engine.
-3. Press **Play**. The server will automatically begin catching JSON payloads as soon as traffic is spawned.
+3. Press **Play**. The server will automatically begin catching JSON payloads as soon as traffic is populated.
 
 ---
-*Built for the 2026 Hackathon.*
+*Developed for TinkerQuest 26.*
