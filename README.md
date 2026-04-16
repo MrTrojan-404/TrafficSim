@@ -24,14 +24,11 @@ Built for the **TinkerQuest 26 Hackathon**, this tool moves beyond static urban 
 
 ## Technical Architecture
 
-TrafficSim separates the heavy visual/agent simulation from data visualization to ensure a flawless 60+ FPS environment for complex macro-system simulations.
+TrafficSim completely bypasses traditional Object-Oriented engine bottlenecks to achieve massive scale (5,000+ agents at 60 FPS).
 
-1.  **The Engine (UE5 / C++):** Handles spatial hashing, collision matrices, A* pathing algorithms, and UI state logic without relying on heavy native physics (OverlapAllDynamic).
-2.  **The Network Layer (HTTP):** UE5 gathers agent statistics and fires lightweight JSON payloads asynchronously.
-3.  **The Backend (Python / Flask):** Catches telemetry payloads, sanitizes the data, logs it to chronological `.csv` files, and serves the REST API.
-4.  **The Frontend (JS / Chart.js):** Pings the Flask API and animates the live data streams.
-
----
+1.  **The Engine (UE5 C++ / DOD):** Built using pure **Data-Oriented Design (DOD)** and a custom **Struct of Arrays (SoA)** memory pool. We replaced standard physics and collision volumes with pure 1D array math (1 clock cycle per vehicle).
+2.  **GPU Batching & Rendering:** Uses Hardware Instanced Static Meshes (HISM) and distance culling. The C++ logic writes thousands of vehicle transforms to a raw memory buffer and hands it to the GPU in **one single batch update per frame**.
+3.  **The Backend (Python / Flask):** A decoupled REST API catches telemetry payloads asynchronously, logs them to `.csv`, and serves the live dashboard without impacting the UE5 render thread.
 
 ## Getting Started
 
