@@ -132,6 +132,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
 	USpotLightComponent* BackwardStreetLight;
 
+	UFUNCTION()
+	void BuildRoadGeometry();
+	
 protected:
 	virtual void BeginPlay() override;
 

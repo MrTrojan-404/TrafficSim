@@ -67,10 +67,7 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 	if (SplineComponent)
 	{
 		// Snap the first spline point to the StartNode
-		if (StartNode)
-		{
-			SplineComponent->SetLocationAtSplinePoint(0, StartNode->GetActorLocation(), ESplineCoordinateSpace::World, true);
-		}
+		if (StartNode) SplineComponent->SetLocationAtSplinePoint(0, StartNode->GetActorLocation(), ESplineCoordinateSpace::World, true);
 
 		// Snap the last spline point to the EndNode
 		if (EndNode)
@@ -78,77 +75,65 @@ void ARoadSegment::OnConstruction(const FTransform& Transform)
 			int32 LastPointIndex = SplineComponent->GetNumberOfSplinePoints() - 1;
 			SplineComponent->SetLocationAtSplinePoint(LastPointIndex, EndNode->GetActorLocation(), ESplineCoordinateSpace::World, true);
 		}
-
-		// ---> WE DELETED THE MANUAL CLEANUP LOOP! Unreal handles it automatically now. <---
-
-		// 2. GENERATION: Build the modular road
-		if (RoadMeshAsset)
-		{
-			int32 NumPoints = SplineComponent->GetNumberOfSplinePoints();
-			
-			for (int32 i = 0; i < NumPoints - 1; ++i)
-			{
-				USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
-				SplineMesh->CreationMethod = EComponentCreationMethod::UserConstructionScript; 
-				
-				// Setup Attachment MUST happen before Registering
-				SplineMesh->SetupAttachment(SplineComponent);
-
-				SplineMesh->SetStaticMesh(RoadMeshAsset);
-				SplineMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
-				SplineMesh->SetMobility(EComponentMobility::Movable);
-				
-				// Now that it's attached properly, we register it to the world
-				SplineMesh->RegisterComponent();
-
-				// Explicitly zero out any rogue offsets just to be safe
-				SplineMesh->SetRelativeTransform(FTransform::Identity); 
-
-				// Widen the road
-				SplineMesh->SetStartScale(FVector2D(1.0f, 6.0f));
-				SplineMesh->SetEndScale(FVector2D(1.0f, 6.0f));
-
-				// Force the component to respect the default plane's center-pivot bounds
-				SplineMesh->SetBoundaryMin(-50.0f);
-				SplineMesh->SetBoundaryMax(50.0f);
-
-				FVector StartPos, StartTangent, EndPos, EndTangent;
-				SplineComponent->GetLocationAndTangentAtSplinePoint(i, StartPos, StartTangent, ESplineCoordinateSpace::Local);
-				SplineComponent->GetLocationAndTangentAtSplinePoint(i + 1, EndPos, EndTangent, ESplineCoordinateSpace::Local);
-
-				SplineMesh->SetStartAndEnd(StartPos, StartTangent, EndPos, EndTangent);
-			}
-		}
-		
-		float Length = SplineComponent->GetSplineLength();
-		float StopDist = 800.0f; 
-		float HeightOffset = 300.0f; 
-
-		// ---> Dynamic curb offset based on Left/Right Hand Traffic <---
-		float LightOffset = bDriveOnLeft ? -150.0f : 150.0f;
-
-		// Position Forward Light (Outside curb of the forward lane)
-		if (Length > StopDist)
-		{
-			FVector FwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
-			FVector FwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
-			ForwardLightMesh->SetWorldLocation(FwdLoc + (FwdRight * LightOffset) + FVector(0, 0, HeightOffset));
-		}
-
-		// Position Backward Light (Outside curb of the backward lane)
-		if (Length > StopDist)
-		{
-			FVector BwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
-			FVector BwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
-			BackwardLightMesh->SetWorldLocation(BwdLoc + (BwdRight * -LightOffset) + FVector(0, 0, HeightOffset));
-		}
 	}
 }
 
+void ARoadSegment::BuildRoadGeometry()
+{
+    if (!SplineComponent) return;
+
+    // 1. GENERATION: Build the modular road
+    if (RoadMeshAsset)
+    {
+        int32 NumPoints = SplineComponent->GetNumberOfSplinePoints();
+        
+        for (int32 i = 0; i < NumPoints - 1; ++i)
+        {
+            // Notice we dropped the "UserConstructionScript" flag!
+            USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
+            SplineMesh->SetupAttachment(SplineComponent);
+            SplineMesh->SetStaticMesh(RoadMeshAsset);
+            SplineMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+            SplineMesh->SetMobility(EComponentMobility::Movable);
+            SplineMesh->RegisterComponent();
+
+            SplineMesh->SetRelativeTransform(FTransform::Identity); 
+            SplineMesh->SetStartScale(FVector2D(1.0f, 6.0f));
+            SplineMesh->SetEndScale(FVector2D(1.0f, 6.0f));
+            SplineMesh->SetBoundaryMin(-50.0f);
+            SplineMesh->SetBoundaryMax(50.0f);
+
+            FVector StartPos, StartTangent, EndPos, EndTangent;
+            SplineComponent->GetLocationAndTangentAtSplinePoint(i, StartPos, StartTangent, ESplineCoordinateSpace::Local);
+            SplineComponent->GetLocationAndTangentAtSplinePoint(i + 1, EndPos, EndTangent, ESplineCoordinateSpace::Local);
+
+            SplineMesh->SetStartAndEnd(StartPos, StartTangent, EndPos, EndTangent);
+        }
+    }
+    
+    // 2. Position the Lights
+    float Length = SplineComponent->GetSplineLength();
+    float StopDist = 800.0f; 
+    float HeightOffset = 300.0f; 
+    float LightOffset = bDriveOnLeft ? -150.0f : 150.0f;
+
+    if (Length > StopDist)
+    {
+        FVector FwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
+        FVector FwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(Length - StopDist, ESplineCoordinateSpace::World);
+        ForwardLightMesh->SetWorldLocation(FwdLoc + (FwdRight * LightOffset) + FVector(0, 0, HeightOffset));
+
+        FVector BwdLoc = SplineComponent->GetLocationAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
+        FVector BwdRight = SplineComponent->GetRightVectorAtDistanceAlongSpline(StopDist, ESplineCoordinateSpace::World);
+        BackwardLightMesh->SetWorldLocation(BwdLoc + (BwdRight * -LightOffset) + FVector(0, 0, HeightOffset));
+    }
+}
 void ARoadSegment::BeginPlay()
 {
 	Super::BeginPlay();
 
+	BuildRoadGeometry();
+	
 	// Bind to the entire Actor
 	OnClicked.AddDynamic(this, &ARoadSegment::OnRoadClicked);
 

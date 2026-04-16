@@ -316,6 +316,10 @@ void ATrafficManager::SpawnCar(TArray<ARoadSegment*> Route, AIntersectionNode* D
             }
             
             RegisterToRoad(i);
+            if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController()))
+            {
+                PC->RegisterSpawnedCar();
+            }
             return;
         }
     }
