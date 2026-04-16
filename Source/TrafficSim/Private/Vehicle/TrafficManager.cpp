@@ -101,14 +101,33 @@ void ATrafficManager::Tick(float DeltaTime)
 
         bIsPullingOver[i] = false;
 
-        // --- 1. GAP CHECKING ---
+        // --- 1. GAP CHECKING & SIREN DETECTION ---
         for (int32 OtherCarIndex : RelevantLane)
         {
             if (OtherCarIndex == i || !bIsActive[OtherCarIndex]) continue; 
 
-            float Gap = bTravelingForward[i] ? (DistanceAlongSpline[OtherCarIndex] - DistanceAlongSpline[i]) : (DistanceAlongSpline[i] - DistanceAlongSpline[OtherCarIndex]);
+            float DistanceDiff = bTravelingForward[i] ? (DistanceAlongSpline[OtherCarIndex] - DistanceAlongSpline[i]) : (DistanceAlongSpline[i] - DistanceAlongSpline[OtherCarIndex]);
 
-            if (Gap > 0.0f && Gap < DistanceToCarAhead) DistanceToCarAhead = Gap;
+            // Is the other car AHEAD of us?
+            if (DistanceDiff > 0.0f)
+            {
+                if (DistanceDiff < DistanceToCarAhead)
+                {
+                    // AMBULANCE PASSING: If I am an ambulance, and the car ahead is pulling over, IGNORE THEM!
+                    if (bIsEmergencyVehicle[i] && bIsPullingOver[OtherCarIndex]) continue;
+                    
+                    DistanceToCarAhead = DistanceDiff;
+                }
+            }
+            // Is the other car BEHIND us?
+            else if (DistanceDiff < 0.0f)
+            {
+                // SIREN SENSOR: If an ambulance is right behind me, panic and pull over!
+                if (!bIsEmergencyVehicle[i] && bIsEmergencyVehicle[OtherCarIndex] && FMath::Abs(DistanceDiff) < 2500.0f)
+                {
+                    bIsPullingOver[i] = true;
+                }
+            }
         }
 
         if (DistanceToCarAhead < MinFollowingDistance) TargetSpeed = 0.0f;
@@ -177,6 +196,11 @@ void ATrafficManager::Tick(float DeltaTime)
             if (bRedLightStop && !bIsEmergencyVehicle[i]) TargetSpeed = 0.0f;
         }
 
+        if (bIsPullingOver[i])
+        {
+            TargetSpeed = 0.0f; 
+        }
+        
         // --- 5. MOVEMENT & INTERPOLATION ---
         float InterpSpeed = (TargetSpeed == 0.0f) ? 10.0f : 3.0f;
         CurrentSpeed[i] = FMath::FInterpTo(CurrentSpeed[i], TargetSpeed, DeltaTime, InterpSpeed);
@@ -219,6 +243,14 @@ void ATrafficManager::Tick(float DeltaTime)
 
         float BaseOffset = CurrentSegment[i]->bDriveOnLeft ? -150.0f : 150.0f;
         float TargetLaneOffset = bTravelingForward[i] ? BaseOffset : -BaseOffset;
+
+        // PULL OVER EVASION
+        if (bIsPullingOver[i])
+        {
+            // Shift the civilian car an extra 250 units to the outside curb
+            float CurbShift = CurrentSegment[i]->bDriveOnLeft ? -250.0f : 250.0f;
+            TargetLaneOffset += bTravelingForward[i] ? CurbShift : -CurbShift;
+        }
 
         CurrentLaneOffset[i] = FMath::FInterpTo(CurrentLaneOffset[i], TargetLaneOffset, DeltaTime, 2.0f);
         FVector FinalLoc = BaseLoc + (RightVec * CurrentLaneOffset[i]) + (UpVec * 30.0f);
