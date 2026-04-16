@@ -4,6 +4,7 @@
 #include "UI/TrafficHUDWidget.h"
 
 #include "HttpModule.h"
+#include "Components/Border.h"
 #include "Components/TextBlock.h"
 #include "Controller/TrafficPlayerController.h"
 #include "Interfaces/IHttpRequest.h"
@@ -15,7 +16,10 @@
 void UTrafficHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-    
+
+	// Ensure loading screen is hidden at start
+	HideLoadingScreen();
+	
 	// Update stats every 0.5 seconds instead of every frame to save massive CPU power
 	GetWorld()->GetTimerManager().SetTimer(StatUpdateTimer, this, &UTrafficHUDWidget::UpdateStats, 0.5f, true);
 
@@ -169,6 +173,27 @@ void UTrafficHUDWidget::UpdateStats()
     Request->SetHeader("Content-Type", "application/json");
     Request->SetContentAsString(JsonPayload);
     Request->ProcessRequest();
+}
+
+void UTrafficHUDWidget::ShowLoadingScreen(FString Message)
+{
+	if (Txt_LoadingMessage)
+	{
+		Txt_LoadingMessage->SetText(FText::FromString(Message));
+	}
+    
+	if (Border_LoadingOverlay)
+	{
+		Border_LoadingOverlay->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UTrafficHUDWidget::HideLoadingScreen()
+{
+	if (Border_LoadingOverlay)
+	{
+		Border_LoadingOverlay->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void UTrafficHUDWidget::HandleGameModeChanged(ETrafficGameMode NewMode)

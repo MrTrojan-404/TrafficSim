@@ -16,6 +16,9 @@ public:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
+	void ShowLoadingScreen(FString Message);
+	void HideLoadingScreen();
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_TotalVehicles;
@@ -43,7 +46,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Txt_SpawnRate;
-	
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	class UBorder* Border_LoadingOverlay;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* Txt_LoadingMessage;
 private:
 	FTimerHandle StatUpdateTimer;
 

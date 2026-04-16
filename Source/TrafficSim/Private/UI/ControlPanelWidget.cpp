@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Pawn/RTSCameraPawn.h"
 #include "SaveGame/TrafficSaveGame.h"
+#include "UI/TrafficHUDWidget.h"
 
 void UControlPanelWidget::NativeConstruct()
 {
@@ -134,8 +135,19 @@ void UControlPanelWidget::OnLoadLayoutClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
-		PC->LoadCityLayout();
-		OnCloseClicked(); // Close menu to see the loaded city!
+		UTrafficHUDWidget* HUD = Cast<UTrafficHUDWidget>(PC->HUDWidgetInstance);
+		if (HUD) HUD->ShowLoadingScreen(TEXT("Loading City Infrastructure... Please Wait"));
+
+		FTimerHandle LoadingTimer;
+		FTimerDelegate Delegate = FTimerDelegate::CreateLambda([PC, HUD]()
+		{
+			if (PC) PC->LoadCityLayout();
+			if (HUD) HUD->HideLoadingScreen();
+		});
+
+		PC->GetWorldTimerManager().SetTimer(LoadingTimer, Delegate, 0.1f, false);
+
+		OnCloseClicked(); 
 	}
 }
 
@@ -212,14 +224,26 @@ void UControlPanelWidget::OnGenerateCityClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
 	{
-		// Default to a 4x4 city if the Spin Box isn't hooked up properly in Blueprints
 		int32 Size = Spin_CitySize ? (int32)Spin_CitySize->GetValue() : 4; 
-        
-		PC->GenerateProceduralCity(Size);
+       
+		// 1. Tell the HUD to show the loading screen
+		UTrafficHUDWidget* HUD = Cast<UTrafficHUDWidget>(PC->HUDWidgetInstance);
+		if (HUD) HUD->ShowLoadingScreen(TEXT("Generating Procedural City... Please Wait"));
+
+		// 2. Use a Lambda Timer to wait 0.1 seconds before freezing the thread!
+		FTimerHandle LoadingTimer;
+		FTimerDelegate Delegate = FTimerDelegate::CreateLambda([PC, Size, HUD]()
+		{
+			if (PC) PC->GenerateProceduralCity(Size);
+			if (HUD) HUD->HideLoadingScreen();
+		});
+
+		// We attach the timer to the PlayerController's world so it survives the menu closing
+		PC->GetWorldTimerManager().SetTimer(LoadingTimer, Delegate, 0.1f, false);
+
 		OnCloseClicked();
 	}
 }
-
 void UControlPanelWidget::OnPopulateTrafficClicked()
 {
 	if (ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetOwningPlayer()))
