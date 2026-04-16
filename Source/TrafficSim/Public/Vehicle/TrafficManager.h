@@ -23,7 +23,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Traffic Config")
 	TArray<UStaticMesh*> VehicleMeshes;
 
-	// ---> TRUE DATA-ORIENTED DESIGN: STRUCT OF ARRAYS <---
+	UPROPERTY(EditAnywhere, Category = "Traffic Config")
+	int32 AmbulanceMeshIndex = -1; // -1 means none assigned yet
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Config | Speeds")
+	float CivilianSpeedMin = 500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Config | Speeds")
+	float CivilianSpeedMax = 1200.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Config | Speeds")
+	float EmergencySpeed = 1800.0f;
+	
+	// DATA-ORIENTED DESIGN: STRUCT OF ARRAYS
 	// The CPU will cache these individual arrays for blistering fast iteration
 	TArray<bool> bIsActive;
 	TArray<int32> HISMIndex;
@@ -33,6 +45,7 @@ public:
 	TArray<TArray<ARoadSegment*>> CurrentPath;
 	TArray<int32> PathIndex;
 	TArray<float> CurrentSpeed;
+	TArray<float> MaxSpeed;
 	TArray<float> DistanceAlongSpline;
 	TArray<bool> bTravelingForward;
 	TArray<bool> bIsEmergencyVehicle;

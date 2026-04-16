@@ -25,6 +25,7 @@ void ATrafficManager::BeginPlay()
     CurrentPath.Init(TArray<ARoadSegment*>(), TotalPoolSize);
     PathIndex.Init(0, TotalPoolSize);
     CurrentSpeed.Init(0.0f, TotalPoolSize);
+    MaxSpeed.Init(1000.0f, TotalPoolSize);
     DistanceAlongSpline.Init(0.0f, TotalPoolSize);
     bTravelingForward.Init(true, TotalPoolSize);
     bIsEmergencyVehicle.Init(false, TotalPoolSize);
@@ -91,8 +92,8 @@ void ATrafficManager::Tick(float DeltaTime)
             continue;
         }
 
-        float TargetSpeed = 1000.0f; 
-        float MinFollowingDistance = 500.0f;
+        float TargetSpeed = MaxSpeed[i];
+        float MinFollowingDistance = 560.0f;
         float DistanceToCarAhead = 999999.0f;
         float SegmentLength = CurrentSegment[i]->SplineComponent->GetSplineLength();
 
@@ -118,7 +119,14 @@ void ATrafficManager::Tick(float DeltaTime)
             float DistToBlock = bTravelingForward[i] ? (CurrentSegment[i]->BlockedDistance - DistanceAlongSpline[i]) : (DistanceAlongSpline[i] - CurrentSegment[i]->BlockedDistance);
             if (DistToBlock > 0.0f && DistToBlock < MinFollowingDistance + 150.0f) TargetSpeed = 0.0f;
         }
-
+        // THE COW CHECK
+        if (CurrentSegment[i]->bHasDynamicObstacle)
+        {
+            float DistToCow = bTravelingForward[i] ? (CurrentSegment[i]->DynamicObstacleDistance - DistanceAlongSpline[i]) : (DistanceAlongSpline[i] - CurrentSegment[i]->DynamicObstacleDistance);
+            
+            // The Cow gets a slightly larger buffer space (300.0f) so they don't clip into it
+            if (DistToCow > 0.0f && DistToCow < MinFollowingDistance + 300.0f) TargetSpeed = 0.0f;
+        }
         // --- 3. GPS REROUTING ---
         if (PathIndex[i] + 1 < CurrentPath[i].Num())
         {
@@ -217,8 +225,8 @@ void ATrafficManager::Tick(float DeltaTime)
         FRotator FinalRot = bTravelingForward[i] ? BaseRot : (BaseRot + FRotator(0, 180, 0));
 
         // OPTIMIZATION: Write directly to our raw C++ array instead of calling the Unreal Component!
-        TransformBuffers[HISMIndex[i]][InstanceIndex[i]] = FTransform(FinalRot, FinalLoc, FVector::OneVector);
-
+        TransformBuffers[HISMIndex[i]][InstanceIndex[i]] = FTransform(FinalRot, FinalLoc, FVector(0.7f));
+        
         // --- 8. GRIDLOCK RELIEF ---
         if (CurrentSpeed[i] < 5.0f)
         {
@@ -261,7 +269,19 @@ void ATrafficManager::SpawnCar(TArray<ARoadSegment*> Route, AIntersectionNode* D
             CurrentSpeed[i] = 0.0f;
             SpawnTime[i] = GetWorld()->GetTimeSeconds();
             TimeStuck[i] = 0.0f;
-            bIsEmergencyVehicle[i] = (FMath::FRand() > 0.95f);
+            
+            //MESH-SPECIFIC LOGIC
+            if (DesiredMeshIndex == AmbulanceMeshIndex)
+            {
+                bIsEmergencyVehicle[i] = true;
+                MaxSpeed[i] = EmergencySpeed; // Uses your exact editor value
+            }
+            else
+            {
+                bIsEmergencyVehicle[i] = false;
+                // Picks a random speed between your min and max editor values!
+                MaxSpeed[i] = FMath::RandRange(CivilianSpeedMin, CivilianSpeedMax); 
+            }
             
             RegisterToRoad(i);
             return;
@@ -278,8 +298,8 @@ void ATrafficManager::DespawnCar(int32 CarIndex)
     FTransform Hidden(FRotator::ZeroRotator, FVector(0, 0, -10000.0f), FVector::ZeroVector);
     TransformBuffers[HISMIndex[CarIndex]][InstanceIndex[CarIndex]] = Hidden;
     
-    // We don't need to call UpdateTransform here! 
-    // It will automatically get pushed to the GPU at the end of the frame by the BatchUpdate!
+    // We don't need to call UpdateTransform here
+    // It will automatically get pushed to the GPU at the end of the frame by the BatchUpdate
 }
 
 void ATrafficManager::RegisterToRoad(int32 CarIndex)
