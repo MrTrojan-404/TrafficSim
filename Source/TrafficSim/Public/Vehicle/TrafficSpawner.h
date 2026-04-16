@@ -26,10 +26,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// A list of different vehicle blueprints to randomly spawn
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
-	TArray<TSubclassOf<ATrafficVehicle>> VehicleClassesToSpawn;
-
 	// How often to spawn a car (in seconds)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
 	float SpawnInterval = 3.0f;

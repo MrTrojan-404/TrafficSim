@@ -1,9 +1,9 @@
 #include "Component/TrafficSpawnerComponent.h"
 #include "Road/IntersectionNode.h"
-#include "Vehicle/TrafficVehicle.h"
 #include "Subsystem/TrafficNetworkSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
+#include "Vehicle/TrafficManager.h"
 
 UTrafficSpawnerComponent::UTrafficSpawnerComponent()
 {
@@ -48,9 +48,7 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
     {
         return; // Light is red, hold the cars in the stadium!
     }
-
-    if (VehicleClassesToSpawn.Num() == 0) return;
-
+	
     UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
     if (!Subsystem) return;
 
@@ -107,53 +105,34 @@ void UTrafficSpawnerComponent::AttemptSpawnFromQueue()
 		return; 
 	}
 
-	// PHYSICAL CLEARANCE CHECK
-	// Check if the spawn coordinate is physically occupied by a backed-up car
+	// PHYSICAL CLEARANCE CHECK (Using pure indices)
+	ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+	if (!Manager) return;
+
 	bool bIsForward = (MyNode == TargetRoad->StartNode);
-	TArray<ATrafficVehicle*>& LaneToCheck = bIsForward ? TargetRoad->VehiclesForward : TargetRoad->VehiclesBackward;
+	TArray<int32>& LaneToCheck = bIsForward ? TargetRoad->VehiclesForwardIndices : TargetRoad->VehiclesBackwardIndices;
 	float SpawnDistance = bIsForward ? 0.0f : TargetRoad->SplineComponent->GetSplineLength();
 
-	for (ATrafficVehicle* Car : LaneToCheck)
+	for (int32 CarIndex : LaneToCheck)
 	{
-		if (IsValid(Car))
+		if (Manager->bIsActive[CarIndex])
 		{
-			// If any car is within 500 units of the spawn point, abort the spawn for this tick!
-			if (FMath::Abs(Car->DistanceAlongSpline - SpawnDistance) < 500.0f)
+			if (FMath::Abs(Manager->DistanceAlongSpline[CarIndex] - SpawnDistance) < 500.0f)
 			{
 				return; // Wait for the car to pull forward!
 			}
 		}
 	}
-	
-    // 4. SPAWN THE CAR
-    FVector SpawnLocation = MyNode->GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
-    FRotator SpawnRotation = MyNode->GetActorRotation();
-
-    FActorSpawnParameters SpawnParams;
-    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
-
-    int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
-    TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
-
-    if (SelectedVehicleClass)
-    {
-        ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
-
-        if (NewVehicle)
-        {
-            NewVehicle->DebugEndNode = ChosenDestination;
-            NewVehicle->SetRoute(FinalPath);
-        }
-    }
-
-    // 5. Car successfully left the stadium! Remove it from the waiting list.
-    QueuedCarsToSpawn--;
+    
+	// SPAWN THE CAR (Using the correct variable names)
+	Manager->SpawnCar(FinalPath, ChosenDestination);
+	QueuedCarsToSpawn--;
 }
 
 void UTrafficSpawnerComponent::SpawnVehicleRoutine()
 {
-	if (VehicleClassesToSpawn.Num() == 0 || !bIsActiveSpawner) return;
-
+	if (!bIsActiveSpawner) return;
+	
 	AIntersectionNode* OwningNode = Cast<AIntersectionNode>(GetOwner());
 	if (!OwningNode) return; // Failsafe: Ensure this component is attached to a node
 
@@ -197,24 +176,11 @@ void UTrafficSpawnerComponent::SpawnVehicleRoutine()
 
 	if (!ChosenDestination || FinalPath.Num() == 0) return;
 
-	// 2. NOW WE ACTUALLY SPAWN THE CAR (Using GetOwner() for location)
-	FVector SpawnLocation = GetOwner()->GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
-	FRotator SpawnRotation = GetOwner()->GetActorRotation();
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
-
-	int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
-	TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
-
-	if (!SelectedVehicleClass) return; 
-
-	ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
-
-	if (NewVehicle)
+	// 2. NOW WE ACTUALLY SPAWN THE CAR 
+	ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+	if (Manager)
 	{
-		NewVehicle->DebugEndNode = ChosenDestination;
-		NewVehicle->SetRoute(FinalPath);
+		Manager->SpawnCar(FinalPath, ChosenDestination); 
 	}
 }
 

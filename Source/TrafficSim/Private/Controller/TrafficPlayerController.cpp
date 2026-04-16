@@ -19,8 +19,8 @@
 #include "UI/ControlPanelWidget.h"
 #include "UI/SpawnerOverlayWidget.h"
 #include "UI/Tutorial/TutorialWidget.h"
+#include "Vehicle/TrafficManager.h"
 #include "Vehicle/TrafficSpawner.h"
-#include "Vehicle/TrafficVehicle.h"
 
 ATrafficPlayerController::ATrafficPlayerController()
 {
@@ -585,9 +585,7 @@ void ATrafficPlayerController::SetMasterLightState(ELightOverrideState MasterSta
 void ATrafficPlayerController::ClearCity()
 {
 	// 1. Destroy Vehicles first so they don't try to route on deleted roads
-	TArray<AActor*> Vehicles;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
-	for (AActor* A : Vehicles) A->Destroy();
+	ClearTraffic();
 
 	// 2. Destroy Spawners
 	TArray<AActor*> Spawners;
@@ -619,15 +617,26 @@ void ATrafficPlayerController::ClearCity()
 
 void ATrafficPlayerController::ClearTraffic()
 {
-	// 1. Destroy all vehicles
-	TArray<AActor*> Vehicles;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
-	for (AActor* A : Vehicles)
+	// 1. Tell TrafficManager to instantly despawn everything
+	ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+	if (Manager)
 	{
-		A->Destroy();
+		for (int32 i = 0; i < Manager->TotalPoolSize; i++)
+		{
+			if (Manager->bIsActive[i]) Manager->DespawnCar(i);
+		}
+       
+		// Force the batch update immediately so they vanish off screen
+		for (int32 v = 0; v < Manager->VehicleISMs.Num(); v++)
+		{
+			if (Manager->VehicleISMs[v])
+			{
+				Manager->VehicleISMs[v]->BatchUpdateInstancesTransforms(0, Manager->TransformBuffers[v], true, true, true);
+			}
+		}
 	}
 
-	// 2. Wipe the memory of the roads to prevent "Ghost Gridlock"
+	// 2. Wipe the memory of the roads
 	TArray<AActor*> Roads;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARoadSegment::StaticClass(), Roads);
 	for (AActor* A : Roads)
@@ -636,20 +645,18 @@ void ATrafficPlayerController::ClearTraffic()
 		if (Road)
 		{
 			Road->CurrentVehicleCount = 0;
-			Road->VehiclesForward.Empty();
-			Road->VehiclesBackward.Empty();
+			Road->VehiclesForwardIndices.Empty();
+			Road->VehiclesBackwardIndices.Empty();
 
 			Road->bIsBlocked = false;
 			Road->bDisableHeatmap = false;
 			Road->SetHighlight(0);
 			if (Road->RoadblockVisual) Road->RoadblockVisual->SetVisibility(false);
-			Road->UpdateHeatmap(); // Force the color to reset to black
+			Road->UpdateHeatmap(); 
 		}
 	}
 	TotalTripsCompleted = 0;
 	CumulativeTravelTime = 0.0f;
-
-	UE_LOG(LogTemp, Warning, TEXT("MASTER CONTROL: Traffic Cleared!"));
 }
 
 void ATrafficPlayerController::ToggleHeatmapPulse()
@@ -859,9 +866,17 @@ void ATrafficPlayerController::ExportAnalyticsToCSV()
 	// 1. Calculate our current metrics
 	float AverageTime = (TotalTripsCompleted > 0) ? (CumulativeTravelTime / TotalTripsCompleted) : 0.0f;
 
-	TArray<AActor*> Vehicles;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), Vehicles);
-	int32 ActiveCars = Vehicles.Num();
+	int32 ActiveCars = 0;
+	ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+    
+	if (Manager)
+	{
+		// One lightning-fast loop to count them!
+		for (int32 i = 0; i < Manager->TotalPoolSize; i++)
+		{
+			if (Manager->bIsActive[i]) ActiveCars++;
+		}
+	}
 
 	// 2. Build the CSV String (Commas separate columns, \n separates rows)
 	FString CSVContent = TEXT("Traffic Network Analytics Report\n\n");

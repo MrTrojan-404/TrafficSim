@@ -13,7 +13,6 @@
 #include "Road/RoadSegment.h"
 #include "Subsystem/TrafficNetworkSubsystem.h"
 #include "Vehicle/TrafficSpawner.h"
-#include "Vehicle/TrafficVehicle.h"
 
 AIntersectionNode::AIntersectionNode()
 {

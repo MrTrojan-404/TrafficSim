@@ -8,7 +8,6 @@
 #include "Components/SpotLightComponent.h"
 #include "Controller/TrafficPlayerController.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
-#include "Vehicle/TrafficVehicle.h"
 
 
 ARoadSegment::ARoadSegment()
@@ -37,12 +36,6 @@ ARoadSegment::ARoadSegment()
 	if (SplineComponent) SplineComponent->SetMobility(EComponentMobility::Movable);
 	if (ForwardLightMesh) ForwardLightMesh->SetMobility(EComponentMobility::Movable);
 	if (BackwardLightMesh) BackwardLightMesh->SetMobility(EComponentMobility::Movable);
-
-	// Initialize the Trigger Box
-	RoadTriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RoadTriggerBox"));
-	RoadTriggerBox->SetupAttachment(RootComponent);
-	// Optimization: ONLY check for overlap events, completely ignore physics and blocking
-	RoadTriggerBox->SetCollisionProfileName(TEXT("OverlapAllDynamic")); 
 
 	// Initialize the Lights
 	// FORWARD LIGHT SETUP 
@@ -182,44 +175,6 @@ void ARoadSegment::BeginPlay()
 
 	// 3. Start the heatmap update loop (Running twice a second is highly optimized)
 	GetWorld()->GetTimerManager().SetTimer(HeatmapTimerHandle, this, &ARoadSegment::UpdateHeatmap, 0.1f, true);
-
-	// Size the trigger box to cover the entire length of the road
-	if (SplineComponent)
-	{
-		float RoadLength = SplineComponent->GetSplineLength();
-		RoadTriggerBox->SetBoxExtent(FVector(RoadLength / 2.0f, 400.0f, 300.0f)); 
-        
-		// Move the box to the center of the road
-		FVector CenterLoc = SplineComponent->GetLocationAtDistanceAlongSpline(RoadLength / 2.0f, ESplineCoordinateSpace::World);
-		RoadTriggerBox->SetWorldLocation(CenterLoc);
-	}
-
-	// Bind the highly optimized overlap events
-	RoadTriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ARoadSegment::OnVehicleEnter);
-	RoadTriggerBox->OnComponentEndOverlap.AddDynamic(this, &ARoadSegment::OnVehicleExit);
-}
-
-void ARoadSegment::OnVehicleEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
-	if (PC && PC->CurrentTimeOfDay < 0.6f) return; 
-
-	if (Cast<ATrafficVehicle>(OtherActor))
-	{
-		// Lower the intensity so it's a soft glow
-		if (ForwardStreetLight) ForwardStreetLight->SetIntensity(15000.0f);
-		if (BackwardStreetLight) BackwardStreetLight->SetIntensity(15000.0f);
-	}
-}
-
-void ARoadSegment::OnVehicleExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	// Only turn off if the road is mathematically empty (no cars currently registered)
-	if (CurrentVehicleCount <= 0)
-	{
-		if (ForwardStreetLight) ForwardStreetLight->SetIntensity(0.0f);
-		if (BackwardStreetLight) BackwardStreetLight->SetIntensity(0.0f);
-	}
 }
 
 void ARoadSegment::SetHighlight(int32 StencilValue)
@@ -268,6 +223,25 @@ void ARoadSegment::OnHoverEnd(AActor* TouchedActor)
 void ARoadSegment::UpdateHeatmap()
 {
 	ATrafficPlayerController* PC = Cast<ATrafficPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	// --- NEW: DATA-DRIVEN SMART STREETLIGHTS ---
+	if (PC && PC->CurrentTimeOfDay >= 0.6f) // If it is Nighttime
+	{
+		// If math says cars are here, turn on. Otherwise, turn off.
+		float TargetIntensity = (CurrentVehicleCount > 0) ? 15000.0f : 0.0f;
+        
+		if (ForwardStreetLight && ForwardStreetLight->Intensity != TargetIntensity) 
+			ForwardStreetLight->SetIntensity(TargetIntensity);
+            
+		if (BackwardStreetLight && BackwardStreetLight->Intensity != TargetIntensity) 
+			BackwardStreetLight->SetIntensity(TargetIntensity);
+	}
+	else
+	{
+		// Daytime: Force lights off
+		if (ForwardStreetLight && ForwardStreetLight->Intensity > 0.0f) ForwardStreetLight->SetIntensity(0.0f);
+		if (BackwardStreetLight && BackwardStreetLight->Intensity > 0.0f) BackwardStreetLight->SetIntensity(0.0f);
+	}
 	
 	//  Check both the Master Switch and the Local Switch 
 	if ((PC && !PC->bMasterHeatmapEnabled) || bDisableHeatmap)
@@ -422,16 +396,10 @@ void ARoadSegment::SetupConnection(AIntersectionNode* InStartNode, AIntersection
 
 void ARoadSegment::DestroyRoadSafe()
 {
-	//Copy the arrays, then empty them BEFORE destroying the cars
-	TArray<ATrafficVehicle*> ForwardCopy = VehiclesForward;
-	TArray<ATrafficVehicle*> BackwardCopy = VehiclesBackward;
-
-	VehiclesForward.Empty();
-	VehiclesBackward.Empty();
-
-	// Vaporize the cars
-	for (ATrafficVehicle* V : ForwardCopy) if (IsValid(V)) V->Destroy();
-	for (ATrafficVehicle* V : BackwardCopy) if (IsValid(V)) V->Destroy();
+	// Just clear the integer arrays. The TrafficManager will automatically see the 
+	// road is missing and despawn the cars!
+	VehiclesForwardIndices.Empty();
+	VehiclesBackwardIndices.Empty();
 
 	// Unhook from Nodes
 	if (StartNode)
@@ -439,7 +407,6 @@ void ARoadSegment::DestroyRoadSafe()
 		StartNode->OutgoingSegments.Remove(this);
 		StartNode->IncomingSegments.Remove(this);
 	}
-
 	if (EndNode)
 	{
 		EndNode->OutgoingSegments.Remove(this);

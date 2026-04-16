@@ -15,10 +15,6 @@ class TRAFFICSIM_API UTrafficSpawnerComponent : public UActorComponent
 public:	
 	UTrafficSpawnerComponent();
 
-	// ---> CONFIGURATION <---
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
-	TArray<TSubclassOf<ATrafficVehicle>> VehicleClassesToSpawn;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
 	float SpawnInterval = 2.5f;
 

@@ -1,5 +1,5 @@
 @echo off
-title UrbanFlow Command Center Launcher
+title TrafficSim Command Center Launcher
 
 echo Booting Telemetry Server...
 :: The 'start /min' command opens the Python server in a hidden, minimized window
@@ -9,7 +9,6 @@ start /min cmd /c "python dashboard.py"
 timeout /t 2 /nobreak > NUL
 
 echo Launching Unreal Engine Simulation...
-:: Replace "UrbanFlow.exe" with the actual name of your packaged game!
-start "" "UrbanFlow.exe"
+start "" "TrafficSim.exe"
 
 exit

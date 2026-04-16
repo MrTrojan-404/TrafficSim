@@ -36,18 +36,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Traffic Logic")
 	float GetRoutingWeight() const;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
-	TArray<class ATrafficVehicle*> ActiveVehicles;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traffic Data")
 	bool bIsTwoWay = true; // Default to two-way now!
 
-	// Split the trackers so cars only care about their own lane
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
-	TArray<ATrafficVehicle*> VehiclesForward; // Driving StartNode -> EndNode
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Traffic Data")
-	TArray<ATrafficVehicle*> VehiclesBackward; // Driving EndNode -> StartNode
+	// Pure DOD:store the memory address (index) of the car
+	TArray<int32> VehiclesForwardIndices;
+	TArray<int32> VehiclesBackwardIndices;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ForwardLightMesh;
@@ -138,14 +132,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
 	USpotLightComponent* BackwardStreetLight;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
-	class UBoxComponent* RoadTriggerBox;
-
-	UFUNCTION()
-	void OnVehicleEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnVehicleExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 protected:
 	virtual void BeginPlay() override;
 

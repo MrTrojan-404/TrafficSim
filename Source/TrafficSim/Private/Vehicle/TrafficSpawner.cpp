@@ -1,10 +1,11 @@
 #include "Vehicle/TrafficSpawner.h"
 
-#include "TrafficSim/Public/Vehicle/TrafficVehicle.h"
 #include "TrafficSim/Public/Road/IntersectionNode.h"
 #include "TrafficSim/Public/Subsystem/TrafficNetworkSubsystem.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
+#include "Vehicle/TrafficManager.h"
 
 ATrafficSpawner::ATrafficSpawner()
 {
@@ -16,7 +17,7 @@ void ATrafficSpawner::BeginPlay()
 	Super::BeginPlay();
 
 	// Check if BOTH arrays have at least one element!
-	if (StartNode && DestinationNodes.Num() > 0 && VehicleClassesToSpawn.Num() > 0)
+	if (StartNode && DestinationNodes.Num() > 0)
 	{
 		GetWorld()->GetTimerManager().SetTimer(SpawnTimerHandle, this, &ATrafficSpawner::SpawnVehicle, SpawnInterval, true);
 	}
@@ -29,8 +30,8 @@ void ATrafficSpawner::BeginPlay()
 void ATrafficSpawner::SpawnVehicle()
 {
 	// 1. Check if both arrays actually have data
-	if (VehicleClassesToSpawn.Num() == 0 || !StartNode || DestinationNodes.Num() == 0) return;
-
+	if (!StartNode || DestinationNodes.Num() == 0) return;
+	
 	UTrafficNetworkSubsystem* Subsystem = GetWorld()->GetSubsystem<UTrafficNetworkSubsystem>();
 	if (!Subsystem) return;
 
@@ -64,23 +65,11 @@ void ATrafficSpawner::SpawnVehicle()
 			}
 		}
 
-		// --->  Pick a random vehicle class from our new array <---
-		int32 RandomVehicleIndex = FMath::RandRange(0, VehicleClassesToSpawn.Num() - 1);
-		TSubclassOf<ATrafficVehicle> SelectedVehicleClass = VehicleClassesToSpawn[RandomVehicleIndex];
-
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-		FVector SpawnLocation = StartNode->GetActorLocation();
-		FRotator SpawnRotation = FRotator::ZeroRotator;
-
-		// ---> Pass in the SelectedVehicleClass <---
-		ATrafficVehicle* NewVehicle = GetWorld()->SpawnActor<ATrafficVehicle>(SelectedVehicleClass, SpawnLocation, SpawnRotation, SpawnParams);
-
-		if (NewVehicle)
+		// Find the manager and tell it to wake up a pooled car!
+		ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+		if (Manager)
 		{
-			NewVehicle->DebugEndNode = TargetDestination;
-			NewVehicle->SetRoute(Path);
+			Manager->SpawnCar(Path, TargetDestination); // Failsafe, fast, zero memory allocation!
 		}
 	}
 	else

@@ -9,7 +9,7 @@
 #include "Interfaces/IHttpRequest.h"
 #include "Kismet/GameplayStatics.h"
 #include "Road/RoadSegment.h"
-#include "Vehicle/TrafficVehicle.h"
+#include "Vehicle/TrafficManager.h"
 
 
 void UTrafficHUDWidget::NativeConstruct()
@@ -39,29 +39,28 @@ void UTrafficHUDWidget::NativeDestruct()
 
 void UTrafficHUDWidget::UpdateStats()
 {
-    // 1. Count Total & Stopped Vehicles for Emissions Math
-    TArray<AActor*> FoundVehicles;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATrafficVehicle::StaticClass(), FoundVehicles);
+	int32 ActiveCarCount = 0;
+	int32 StoppedVehicles = 0;
     
-    int32 StoppedVehicles = 0;
+	ATrafficManager* Manager = Cast<ATrafficManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATrafficManager::StaticClass()));
+    
+	if (Manager)
+	{
+		// ONE LOOP: Count active cars and stopped cars directly from the parallel arrays!
+		for (int32 i = 0; i < Manager->TotalPoolSize; i++)
+		{
+			if (Manager->bIsActive[i])
+			{
+				ActiveCarCount++;
+				if (Manager->CurrentSpeed[i] < 10.0f)
+				{
+					StoppedVehicles++;
+				}
+			}
+		}
+	}
 
-    for (AActor* Actor : FoundVehicles)
-    {
-       ATrafficVehicle* Vehicle = Cast<ATrafficVehicle>(Actor);
-       if (Vehicle)
-       {
-          // If the car is moving slower than 10 units/sec, consider it idling/stopped
-          if (Vehicle->CurrentSpeed < 10.0f)
-          {
-             StoppedVehicles++;
-          }
-       }
-    }
-
-    if (Txt_TotalVehicles)
-    {
-       Txt_TotalVehicles->SetText(FText::AsNumber(FoundVehicles.Num()));
-    }
+	if (Txt_TotalVehicles) Txt_TotalVehicles->SetText(FText::AsNumber(ActiveCarCount));
 
     // 2. Count Roadblocks & Congestion
     TArray<AActor*> FoundRoads;
@@ -144,7 +143,7 @@ void UTrafficHUDWidget::UpdateStats()
 
     // 4. THE EMISSIONS CALCULATION
     // Base moving cars emit 2.0 units of CO2. Idling cars are highly inefficient and emit 10.0 units.
-    float MovingCars = FoundVehicles.Num() - StoppedVehicles;
+    float MovingCars = ActiveCarCount - StoppedVehicles;
     float TotalEmissions = (MovingCars * 2.0f) + (StoppedVehicles * 10.0f);
 
 	if (Txt_TotalEmissions)
@@ -156,7 +155,7 @@ void UTrafficHUDWidget::UpdateStats()
 	
 	// TELEMETRY BROADCAST
 	FString JsonPayload = FString::Printf(TEXT("{\"active_cars\": %d, \"roadblocks\": %d, \"congestion\": %f, \"average_time\": %f, \"emissions\": %f, \"throughput\": %d, \"spawn_rate\": %d}"), 
-		   FoundVehicles.Num(), ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime, TotalEmissions, CarsPerMinute, SpawnRate);
+		   ActiveCarCount, ActiveRoadblocks, AverageCongestion * 100.0f, AverageTime, TotalEmissions, CarsPerMinute, SpawnRate);
 
     // Create and send the HTTP Request
     TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
