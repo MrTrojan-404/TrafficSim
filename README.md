@@ -21,6 +21,15 @@ Built for the **TinkerQuest 26 Hackathon**, this tool moves beyond static urban 
 * **Interpretable Outputs:** A responsive web application visualizes active vehicles, throughput vs. load, congestion heatmaps, and average travel times in real-time.
 
 ---
+## How We Addressed the Problem Statement
+
+TrafficSim was purpose-built to solve **Problem Statement 1: Agent-Based Traffic Resilience Testing**. Here is how our architecture directly maps to the core requirements:
+
+*   **Structured Spatial Networks:** We implemented procedural grid generation and A* graph-based pathfinding, allowing planners to create complex road networks on the fly.
+*   **Autonomous Agents & Speed Dynamics:** Instead of scripted paths, up to 5,000 vehicles operate as independent agents. Each calculates its own gap-distance, lane offsets, and speed based on the environment (DOD architecture). 
+*   **Emergent Decentralized Patterns:** Traffic jams occur naturally in our simulation. Furthermore, civilian agents autonomously detect approaching emergency vehicles via array lookups and dynamically swerve to the curb to create a bypass lane.
+*   **Environmental Factors & Signal Timing:** Planners can use the interactive Control Panel to simulate accidents (stray dynamic obstacles), force Artery Closures, trigger Stadium Surges, or completely override global **Traffic Signal Timings** to observe how the grid recovers.
+*   **Interpretable Outputs:** The decoupled Python/Flask dashboard provides live metrics requested by the prompt, including exact Average Travel Times, Congestion Percentages, and dynamic visual heatmaps on the UE5 roads.
 
 ## Technical Architecture
 
